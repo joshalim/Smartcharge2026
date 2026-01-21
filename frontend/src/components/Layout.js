@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe } from 'lucide-react';
+import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe, Activity } from 'lucide-react';
 
 function Layout() {
   const { user, logout } = useAuth();
