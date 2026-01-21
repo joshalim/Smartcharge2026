@@ -110,6 +110,14 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="pricing-groups"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <PricingGroups />
+            </ProtectedRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
