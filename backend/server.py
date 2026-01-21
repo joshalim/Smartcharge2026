@@ -1,10 +1,12 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, status, Query, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
+import hashlib
+import httpx
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 from typing import List, Optional
@@ -32,6 +34,15 @@ db = client[os.environ['DB_NAME']]
 SECRET_KEY = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
+
+# PayU Colombia Configuration (Sandbox)
+PAYU_API_KEY = os.environ.get('PAYU_API_KEY', '4Vj8eK4rloUd272L48hsrarnUA')
+PAYU_API_LOGIN = os.environ.get('PAYU_API_LOGIN', 'pRRXKOl8ikMmt9u')
+PAYU_MERCHANT_ID = os.environ.get('PAYU_MERCHANT_ID', '508029')
+PAYU_ACCOUNT_ID = os.environ.get('PAYU_ACCOUNT_ID', '512321')
+PAYU_TEST_MODE = os.environ.get('PAYU_TEST_MODE', 'true').lower() == 'true'
+PAYU_API_URL = 'https://sandbox.checkout.payulatam.com/ppp-web-gateway-payu/' if PAYU_TEST_MODE else 'https://checkout.payulatam.com/ppp-web-gateway-payu/'
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 security = HTTPBearer()
 
