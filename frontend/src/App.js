@@ -7,6 +7,7 @@ import Transactions from './pages/Transactions';
 import Import from './pages/Import';
 import Users from './pages/Users';
 import Pricing from './pages/Pricing';
+import PricingGroups from './pages/PricingGroups';
 import OCPP from './pages/OCPP';
 import Chargers from './pages/Chargers';
 import Reports from './pages/Reports';
