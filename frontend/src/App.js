@@ -67,6 +67,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="ocpp"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <OCPP />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="users"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
