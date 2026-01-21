@@ -12,6 +12,8 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - PDF invoicing
 - Reports with charts
 - RFID card management with top-up
+- PayU Colombia online payment integration
+- 3rd party invoicing webhook API
 
 ## Core Features
 
@@ -21,14 +23,20 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Role-based route protection
 - Demo credentials shown on login page
 
-### 2. Dashboard
+### 2. User Management ✅ (Enhanced Jan 2026)
+- Create new users (Admin only)
+- Edit user details (name, email, password)
+- Delete users
+- Role management (Admin, User, Viewer)
+
+### 3. Dashboard
 - Total transactions, energy, revenue stats
 - Paid vs unpaid revenue breakdown
 - Active stations count
 - Recent transactions list
 - Payment method breakdown
 
-### 3. Transaction Management
+### 4. Transaction Management
 - Excel import (columns: TxID, Station, Connector, Account, Start Time, End Time, Meter value)
 - Case-insensitive column matching for "Start Time"
 - Bulk payment updates
@@ -36,98 +44,104 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - CSV export
 - Filtering by date, station, account, payment status
 
-### 4. Pricing
+### 5. Pricing
 - Custom pricing rules per account/connector
-- Special accounts (PORTERIA, Jorge Iluminacion, John Iluminacion) with connector-type pricing:
-  - CCS2: 2500 COP/kWh
-  - CHADEMO: 2000 COP/kWh
-  - J1772: 1500 COP/kWh
+- Special accounts (PORTERIA, Jorge Iluminacion, John Iluminacion) with connector-type pricing
 
-### 5. Charger Management ✅
-- Full CRUD operations (Create, Read, Update, Delete)
+### 6. Charger Management ✅
+- Full CRUD operations
 - Charger details: name, location, model, serial number, connector types, max power, status
-- Card-based UI with status badges
 
-### 6. OCPP Monitoring ✅
+### 7. OCPP Monitoring ✅ (Enhanced Jan 2026)
 - OCPP 1.6 endpoint support
 - Remote Control panel with Start/Stop charging buttons
+- **RFID card integration** - Use card number as ID tag
+- **Auto balance validation** - Min $5,000 COP required
+- **Auto balance deduction** - Cost deducted when session ends
 - Active charging sessions table
-- Registered charge points display
-- **Note**: OCPP is simulated via REST endpoints, not full WebSocket protocol
 
-### 7. Reports & Analytics ✅
-- Comprehensive filtering (date range, account, connector type, payment type/status)
-- Summary cards (total transactions, energy, revenue, paid/unpaid)
-- **Charts**:
-  - Revenue by Account (bar chart)
-  - Energy Consumption by Account (bar chart)
-  - Revenue by Connector Type (pie chart)
-  - Revenue by Payment Method (pie chart)
-- Detailed data tables
-- CSV export
-
-### 8. RFID Card Management ✅ (Added Jan 2026)
+### 8. RFID Card Management ✅ (Enhanced Jan 2026)
 - Create/Edit/Delete RFID cards for users
 - Card details: card number, assigned user, balance, status (active/inactive/blocked)
-- **Top-up functionality** with preset amounts ($10k, $25k, $50k, $100k, $200k COP)
-- Card balance display
-- Tabbed UI in User Management page
+- **Manual top-up** with preset amounts
+- **PayU Colombia online top-up** (Sandbox mode)
+- **Transaction history** - Full log of all card activity (top-ups, charges)
 
-### 9. PDF Invoicing
+### 9. PayU Colombia Integration ✅ (Added Jan 2026)
+- WebCheckout integration for RFID card top-ups
+- Sandbox mode configured by default
+- Webhook for payment confirmation
+- Automatic balance update on successful payment
+
+### 10. Invoice Webhook API ✅ (Added Jan 2026)
+- Configurable webhook URL for 3rd party invoicing systems
+- Full transaction details sent on completion:
+  - Transaction ID, account, station, connector
+  - Energy consumed, cost
+  - Start/end times
+  - RFID card info (if linked)
+  - User email
+- API key authentication support
+- Webhook delivery logs
+- Test webhook functionality
+
+### 11. Reports & Analytics ✅
+- Comprehensive filtering
+- Summary cards
+- Bar and pie charts
+- CSV export
+
+### 12. PDF Invoicing
 - Generate invoices for paid transactions
-- Colombian Peso formatting
-- Company branding
 
-### 10. Internationalization
+### 13. Internationalization
 - English and Spanish support
-- Language toggle in sidebar
 
 ## Technical Stack
 - **Frontend**: React, Tailwind CSS, Shadcn/UI, i18next, axios
-- **Backend**: FastAPI (Python), PyJWT, Pydantic, openpyxl, reportlab
+- **Backend**: FastAPI (Python), PyJWT, Pydantic, openpyxl, reportlab, httpx
 - **Database**: MongoDB
+- **Payment**: PayU Colombia (Sandbox)
 
-## What's Implemented (as of Jan 21, 2026)
+## API Endpoints Summary
 
-### Backend (`/app/backend/server.py`)
-- ✅ Authentication (JWT, role-based access)
-- ✅ Transaction CRUD with complex pricing logic
-- ✅ Excel import with case-insensitive column matching
-- ✅ Dashboard statistics API
-- ✅ Charger CRUD endpoints
-- ✅ OCPP endpoints (boot notification, heartbeat, start/stop transaction)
-- ✅ Remote control endpoints (remote-start, remote-stop)
-- ✅ Reports generation API
-- ✅ PDF invoice generation
-- ✅ Filter endpoints (stations, accounts)
-- ✅ **RFID Card CRUD endpoints** (create, read, update, delete, top-up)
+### User Management
+- `POST /api/users` - Create user
+- `PATCH /api/users/{id}` - Update user
+- `DELETE /api/users/{id}` - Delete user
 
-### Frontend (`/app/frontend/src/`)
-- ✅ Login page with company branding and **demo credentials**
-- ✅ Dashboard with stats cards
-- ✅ Transactions page (filtering, bulk update, invoice download)
-- ✅ Import page for Excel files
-- ✅ Pricing configuration page
-- ✅ User management page with **RFID Cards tab**
-- ✅ Chargers page with full CRUD UI
-- ✅ OCPP page with remote control buttons
-- ✅ Reports page with bar/pie charts and tables
-- ✅ Navigation sidebar with all pages
+### RFID Cards
+- `GET /api/rfid-cards` - List all cards
+- `POST /api/rfid-cards` - Create card
+- `PATCH /api/rfid-cards/{id}` - Update card
+- `DELETE /api/rfid-cards/{id}` - Delete card
+- `POST /api/rfid-cards/{id}/topup` - Manual top-up
+- `GET /api/rfid-cards/{id}/history` - Get card transaction history
 
-## Test Results
-- Backend: 19/19 tests passed (100%)
-- Frontend: All UI flows working
+### PayU Integration
+- `POST /api/payu/initiate-topup` - Start PayU payment flow
+- `POST /api/payu/webhook` - Receive payment confirmation
+- `GET /api/payu/payment-status/{ref}` - Check payment status
+
+### Invoice Webhook
+- `GET /api/invoice-webhook/config` - Get webhook config
+- `POST /api/invoice-webhook/config` - Set webhook config
+- `GET /api/invoice-webhook/logs` - View delivery logs
+- `POST /api/invoice-webhook/test` - Test webhook
+
+### OCPP (Enhanced)
+- `POST /api/ocpp/remote-start` - Start with RFID validation
+- `POST /api/ocpp/remote-stop` - Stop with auto balance deduction
 
 ## Credentials
 - Admin: `admin@evcharge.com` / `admin123`
 
 ## Known Limitations
 - OCPP 1.6 is simulated via REST endpoints (not full WebSocket protocol)
-- Charts are CSS-based (no external charting library)
+- PayU is in sandbox mode (test payments only)
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation
 2. **P2**: User grouping for pricing rules
 3. **P2**: Backend refactoring (split server.py into modules)
-4. **P3**: Advanced analytics with date trend charts
-5. **P3**: RFID card usage history/transactions
+4. **P3**: PayU production credentials configuration page
