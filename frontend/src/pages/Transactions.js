@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Filter, Download, Trash2, Edit, X, Check, CheckSquare, Square } from 'lucide-react';
+import { Filter, Download, Trash2, Edit, X, Check, CheckSquare, Square, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCOP, formatNumber } from '../utils/currency';
 
@@ -98,6 +98,37 @@ function Transactions() {
     }
   };
 
+  const downloadInvoice = async (txId) => {
+    try {
+      const response = await axios.get(`${API}/transactions/${txId}/invoice`, {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `invoice_${txId}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Failed to download invoice:', error);
+      alert(error.response?.data?.detail || 'Failed to download invoice');
+    }
+  };
+
+  const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return { date: 'N/A', time: 'N/A' };
+    try {
+      const dt = new Date(dateTimeStr);
+      return {
+        date: dt.toLocaleDateString('es-CO'),
+        time: dt.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
+      };
+    } catch {
+      return { date: 'N/A', time: 'N/A' };
+    }
+  };
+
   const startEdit = (tx) => {
     setEditingTx(tx.id);
     setEditForm({
@@ -170,26 +201,30 @@ function Transactions() {
 
   const exportSelected = () => {
     const selectedTransactions = transactions.filter((tx) => selectedTxs.includes(tx.id));
-    const headers = ['Tx ID', 'Station', 'Connector', 'Connector Type', 'Account', 'Start Time', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Payment Status', 'Payment Type', 'Payment Date'];
-    const rows = selectedTransactions.map((tx) => [
-      tx.tx_id,
-      tx.station,
-      tx.connector,
-      tx.connector_type || '',
-      tx.account,
-      tx.start_time,
-      tx.end_time,
-      tx.charging_duration || '',
-      tx.meter_value,
-      tx.cost,
-      tx.payment_status,
-      tx.payment_type || '',
-      tx.payment_date || '',
-    ]);
+    const headers = ['Tx ID', 'Account', 'Station', 'Connector', 'Type', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Status', 'Payment Type', 'Payment Date'];
+    const rows = selectedTransactions.map((tx) => {
+      const startDT = formatDateTime(tx.start_time);
+      const endDT = formatDateTime(tx.end_time);
+      return [
+        tx.tx_id,
+        tx.account,
+        tx.station,
+        tx.connector,
+        tx.connector_type || '',
+        startDT.date,
+        startDT.time,
+        endDT.date,
+        endDT.time,
+        tx.charging_duration || '',
+        tx.meter_value,
+        tx.cost,
+        tx.payment_status,
+        tx.payment_type || '',
+        tx.payment_date || '',
+      ];
+    });
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.join(',')).join('\n');
-
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.join(',')).join('\n');
     const link = document.createElement('a');
     link.href = encodeURI(csvContent);
     link.download = `selected_transactions_${new Date().toISOString().split('T')[0]}.csv`;
@@ -197,26 +232,30 @@ function Transactions() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Tx ID', 'Station', 'Connector', 'Connector Type', 'Account', 'Start Time', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Payment Status', 'Payment Type', 'Payment Date'];
-    const rows = transactions.map((tx) => [
-      tx.tx_id,
-      tx.station,
-      tx.connector,
-      tx.connector_type || '',
-      tx.account,
-      tx.start_time,
-      tx.end_time,
-      tx.charging_duration || '',
-      tx.meter_value,
-      tx.cost,
-      tx.payment_status,
-      tx.payment_type || '',
-      tx.payment_date || '',
-    ]);
+    const headers = ['Tx ID', 'Account', 'Station', 'Connector', 'Type', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Status', 'Payment Type', 'Payment Date'];
+    const rows = transactions.map((tx) => {
+      const startDT = formatDateTime(tx.start_time);
+      const endDT = formatDateTime(tx.end_time);
+      return [
+        tx.tx_id,
+        tx.account,
+        tx.station,
+        tx.connector,
+        tx.connector_type || '',
+        startDT.date,
+        startDT.time,
+        endDT.date,
+        endDT.time,
+        tx.charging_duration || '',
+        tx.meter_value,
+        tx.cost,
+        tx.payment_status,
+        tx.payment_type || '',
+        tx.payment_date || '',
+      ];
+    });
 
-    const csvContent =
-      'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.join(',')).join('\n');
-
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.join(',')).join('\n');
     const link = document.createElement('a');
     link.href = encodeURI(csvContent);
     link.download = `transactions_${new Date().toISOString().split('T')[0]}.csv`;
@@ -270,7 +309,6 @@ function Transactions() {
         </div>
       </div>
 
-      {/* Bulk Actions Panel */}
       {showBulkActions && selectedTxs.length > 0 && (
         <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6" data-testid="bulk-actions-panel">
           <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
@@ -409,199 +447,119 @@ function Transactions() {
           </div>
         ) : transactions.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full" data-testid="transactions-table">
+            <table className="w-full text-sm" data-testid="transactions-table">
               <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
                 <tr>
                   {(user?.role === 'admin' || user?.role === 'user') && (
-                    <th className="text-left py-4 px-4 text-xs font-semibold">
+                    <th className="text-left py-3 px-3 text-xs font-semibold">
                       <button onClick={toggleSelectAll} className="hover:text-orange-600">
                         {selectedTxs.length === transactions.length ? (
-                          <CheckSquare className="w-5 h-5" />
+                          <CheckSquare className="w-4 h-4" />
                         ) : (
-                          <Square className="w-5 h-5" />
+                          <Square className="w-4 h-4" />
                         )}
                       </button>
                     </th>
                   )}
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.txId')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.account')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.connector')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">Type</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.duration')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.energy')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.cost')}</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">Status</th>
-                  <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">Payment</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Tx ID</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Account</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Connector</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Type</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Start Date</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Start Time</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Duration</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Energy</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Cost</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Status</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Payment</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Paid Date</th>
                   {(user?.role === 'admin' || user?.role === 'user') && (
-                    <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.actions')}</th>
+                    <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Actions</th>
                   )}
                 </tr>
               </thead>
               <tbody>
-                {transactions.map((tx) => (
-                  <tr
-                    key={tx.id}
-                    className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                    data-testid="transaction-row"
-                  >
-                    {editingTx === tx.id ? (
-                      // Edit mode
-                      <>
-                        {(user?.role === 'admin' || user?.role === 'user') && <td className="py-4 px-4"></td>}
-                        <td className="py-4 px-4 text-sm font-medium">{tx.tx_id}</td>
-                        <td className="py-4 px-4">
-                          <input
-                            type="text"
-                            value={editForm.account}
-                            onChange={(e) => setEditForm({...editForm, account: e.target.value})}
-                            className="w-full px-2 py-1 text-sm border rounded"
-                          />
+                {transactions.map((tx) => {
+                  const startDT = formatDateTime(tx.start_time);
+                  return (
+                    <tr key={tx.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      {(user?.role === 'admin' || user?.role === 'user') && (
+                        <td className="py-3 px-3">
+                          <button onClick={() => toggleSelectTx(tx.id)} className="hover:text-orange-600 transition-colors">
+                            {selectedTxs.includes(tx.id) ? (
+                              <CheckSquare className="w-4 h-4 text-orange-600" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
                         </td>
-                        <td className="py-4 px-4">
-                          <input
-                            type="text"
-                            value={editForm.connector}
-                            onChange={(e) => setEditForm({...editForm, connector: e.target.value})}
-                            className="w-full px-2 py-1 text-sm border rounded"
-                          />
-                        </td>
-                        <td className="py-4 px-4">
-                          <select
-                            value={editForm.connector_type}
-                            onChange={(e) => setEditForm({...editForm, connector_type: e.target.value})}
-                            className="w-full px-2 py-1 text-sm border rounded"
-                          >
-                            <option value="">None</option>
-                            <option value="CCS2">CCS2</option>
-                            <option value="CHADEMO">CHADEMO</option>
-                            <option value="J1772">J1772</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-4 text-sm">{tx.charging_duration || 'N/A'}</td>
-                        <td className="py-4 px-4">
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={editForm.meter_value}
-                            onChange={(e) => setEditForm({...editForm, meter_value: parseFloat(e.target.value)})}
-                            className="w-20 px-2 py-1 text-sm border rounded"
-                          />
-                        </td>
-                        <td className="py-4 px-4 text-sm font-semibold text-orange-600">{formatCOP(tx.cost)}</td>
-                        <td className="py-4 px-4">
-                          <select
-                            value={editForm.payment_status}
-                            onChange={(e) => setEditForm({...editForm, payment_status: e.target.value})}
-                            className="px-2 py-1 text-xs border rounded"
-                          >
-                            <option value="UNPAID">UNPAID</option>
-                            <option value="PAID">PAID</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-4">
-                          <select
-                            value={editForm.payment_type}
-                            onChange={(e) => setEditForm({...editForm, payment_type: e.target.value})}
-                            className="w-full px-2 py-1 text-xs border rounded"
-                          >
-                            <option value="">None</option>
-                            <option value="NEQUI">NEQUI</option>
-                            <option value="DAVIPLATA">DAVIPLATA</option>
-                            <option value="EFECTIVO">EFECTIVO</option>
-                          </select>
-                        </td>
-                        <td className="py-4 px-4">
+                      )}
+                      <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-100">{tx.tx_id}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.account}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.connector}</td>
+                      <td className="py-3 px-3">
+                        {tx.connector_type && (
+                          <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-medium">
+                            {tx.connector_type}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.date}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.time}</td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.charging_duration || 'N/A'}</td>
+                      <td className="py-3 px-3 font-semibold text-emerald-600 dark:text-emerald-400">
+                        {formatNumber(tx.meter_value)}
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-orange-600 dark:text-orange-400">
+                        {formatCOP(tx.cost)}
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                          tx.payment_status === 'PAID' 
+                            ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
+                            : 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400'
+                        }`}>
+                          {tx.payment_status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-xs text-slate-600 dark:text-slate-400">
+                        {tx.payment_type || '-'}
+                      </td>
+                      <td className="py-3 px-3 text-xs text-slate-600 dark:text-slate-400">
+                        {tx.payment_date || '-'}
+                      </td>
+                      {(user?.role === 'admin' || user?.role === 'user') && (
+                        <td className="py-3 px-3">
                           <div className="flex gap-1">
+                            {tx.payment_status === 'PAID' && (
+                              <button
+                                onClick={() => downloadInvoice(tx.id)}
+                                className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-950/30 rounded transition-colors"
+                                title="Download Invoice"
+                              >
+                                <FileText className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
-                              onClick={() => saveEdit(tx.id)}
-                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                              data-testid="save-edit-btn"
+                              onClick={() => startEdit(tx)}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition-colors"
                             >
-                              <Check className="w-4 h-4" />
+                              <Edit className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={cancelEdit}
-                              className="p-1 text-slate-600 hover:bg-slate-100 rounded"
-                              data-testid="cancel-edit-btn"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                            {user?.role === 'admin' && (
+                              <button
+                                onClick={() => deleteTransaction(tx.id)}
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
-                      </>
-                    ) : (
-                      // View mode
-                      <>
-                        {(user?.role === 'admin' || user?.role === 'user') && (
-                          <td className="py-4 px-4">
-                            <button
-                              onClick={() => toggleSelectTx(tx.id)}
-                              className="hover:text-orange-600 transition-colors"
-                            >
-                              {selectedTxs.includes(tx.id) ? (
-                                <CheckSquare className="w-5 h-5 text-orange-600" />
-                              ) : (
-                                <Square className="w-5 h-5" />
-                              )}
-                            </button>
-                          </td>
-                        )}
-                        <td className="py-4 px-4 text-sm font-medium text-slate-900 dark:text-slate-100">{tx.tx_id}</td>
-                        <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-400">{tx.account}</td>
-                        <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-400">{tx.connector}</td>
-                        <td className="py-4 px-4 text-xs">
-                          {tx.connector_type && (
-                            <span className="px-2 py-1 bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full font-medium">
-                              {tx.connector_type}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-400">{tx.charging_duration || 'N/A'}</td>
-                        <td className="py-4 px-4 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                          {formatNumber(tx.meter_value)}
-                        </td>
-                        <td className="py-4 px-4 text-sm font-semibold text-orange-600 dark:text-orange-400">
-                          {formatCOP(tx.cost)}
-                        </td>
-                        <td className="py-4 px-4">
-                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                            tx.payment_status === 'PAID' 
-                              ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400'
-                              : 'bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400'
-                          }`}>
-                            {tx.payment_status}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-xs text-slate-600 dark:text-slate-400">
-                          {tx.payment_type || '-'}
-                          {tx.payment_date && <div className="text-xs text-slate-400">{tx.payment_date}</div>}
-                        </td>
-                        {(user?.role === 'admin' || user?.role === 'user') && (
-                          <td className="py-4 px-4">
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => startEdit(tx)}
-                                className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30 rounded transition-colors"
-                                data-testid="edit-transaction-btn"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              {user?.role === 'admin' && (
-                                <button
-                                  onClick={() => deleteTransaction(tx.id)}
-                                  className="p-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded transition-colors"
-                                  data-testid="delete-transaction-btn"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        )}
-                      </>
-                    )}
-                  </tr>
-                ))}
+                      )}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -612,6 +570,95 @@ function Transactions() {
           </div>
         )}
       </div>
+
+      {editingTx && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50" onClick={cancelEdit}>
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-4">Edit Transaction</h3>
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Account</label>
+                <input
+                  type="text"
+                  value={editForm.account}
+                  onChange={(e) => setEditForm({...editForm, account: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Connector Type</label>
+                <select
+                  value={editForm.connector_type}
+                  onChange={(e) => setEditForm({...editForm, connector_type: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">None</option>
+                  <option value="CCS2">CCS2</option>
+                  <option value="CHADEMO">CHADEMO</option>
+                  <option value="J1772">J1772</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Energy (kWh)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editForm.meter_value}
+                  onChange={(e) => setEditForm({...editForm, meter_value: parseFloat(e.target.value)})}
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Payment Status</label>
+                <select
+                  value={editForm.payment_status}
+                  onChange={(e) => setEditForm({...editForm, payment_status: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="UNPAID">UNPAID</option>
+                  <option value="PAID">PAID</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Payment Type</label>
+                <select
+                  value={editForm.payment_type}
+                  onChange={(e) => setEditForm({...editForm, payment_type: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="">None</option>
+                  <option value="NEQUI">NEQUI</option>
+                  <option value="DAVIPLATA">DAVIPLATA</option>
+                  <option value="EFECTIVO">EFECTIVO</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Payment Date</label>
+                <input
+                  type="date"
+                  value={editForm.payment_date}
+                  onChange={(e) => setEditForm({...editForm, payment_date: e.target.value})}
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => saveEdit(editingTx)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={cancelEdit}
+                className="px-4 py-2 border rounded-md hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
