@@ -71,11 +71,18 @@ function OCPP() {
     
     setActionLoading(`stop-${transactionId}`);
     try {
-      await axios.post(`${API}/ocpp/remote-stop`, {
+      const response = await axios.post(`${API}/ocpp/remote-stop`, {
         transaction_id: transactionId
       });
       fetchOCPPData();
-      alert('Remote stop command sent successfully!');
+      
+      // Show result with energy consumed and cost
+      const result = response.data;
+      let message = `Transaction stopped!\n\nEnergy: ${result.energy_consumed?.toFixed(2)} kWh\nCost: $${result.cost?.toLocaleString()} COP`;
+      if (result.rfid_deducted) {
+        message += `\n\n✓ Amount deducted from RFID card\nNew Balance: $${result.new_balance?.toLocaleString()} COP`;
+      }
+      alert(message);
     } catch (error) {
       console.error('Failed to stop transaction:', error);
       alert(error.response?.data?.detail || 'Failed to stop transaction');
