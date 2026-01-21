@@ -12,6 +12,7 @@ const resources = {
       'nav.pricing': 'Pricing',
       'nav.chargers': 'Chargers',
       'nav.reports': 'Reports',
+      'nav.settings': 'Settings',
       'nav.logout': 'Logout',
       
       // Auth
@@ -141,6 +142,7 @@ const resources = {
       'nav.pricing': 'Precios',
       'nav.chargers': 'Cargadores',
       'nav.reports': 'Reportes',
+      'nav.settings': 'Configuración',
       'nav.logout': 'Cerrar Sesión',
       
       // Auth
