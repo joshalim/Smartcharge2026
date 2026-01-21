@@ -1109,7 +1109,17 @@ function Users() {
 
             {/* Required Format Info */}
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <h4 className="font-semibold text-sm text-blue-700 dark:text-blue-400 mb-2">Required Excel Format</h4>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="font-semibold text-sm text-blue-700 dark:text-blue-400">Required Excel Format</h4>
+                <button
+                  onClick={downloadTemplate}
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                  data-testid="download-template-btn"
+                >
+                  <Download className="w-3 h-3" />
+                  Download Template
+                </button>
+              </div>
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-blue-200 dark:border-blue-700">
