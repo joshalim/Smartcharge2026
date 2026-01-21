@@ -45,6 +45,13 @@ function Users() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyCard, setHistoryCard] = useState(null);
   const [cardHistory, setCardHistory] = useState([]);
+  
+  // Import Modal State
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchUsers();
