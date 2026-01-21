@@ -370,7 +370,15 @@ function Users() {
       {/* Users Tab */}
       {activeTab === 'users' && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={openImportModal}
+              className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md transition-colors font-medium"
+              data-testid="import-users-btn"
+            >
+              <Upload className="w-4 h-4" />
+              Import Users
+            </button>
             <button
               onClick={openCreateUser}
               className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium"
