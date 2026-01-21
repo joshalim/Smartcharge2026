@@ -10,6 +10,8 @@ const resources = {
       'nav.import': 'Import',
       'nav.users': 'Users',
       'nav.pricing': 'Pricing',
+      'nav.chargers': 'Chargers',
+      'nav.reports': 'Reports',
       'nav.logout': 'Logout',
       
       // Auth
@@ -137,6 +139,8 @@ const resources = {
       'nav.import': 'Importar',
       'nav.users': 'Usuarios',
       'nav.pricing': 'Precios',
+      'nav.chargers': 'Cargadores',
+      'nav.reports': 'Reportes',
       'nav.logout': 'Cerrar Sesión',
       
       // Auth
