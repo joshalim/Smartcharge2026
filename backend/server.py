@@ -334,6 +334,84 @@ class InvoiceWebhookPayload(BaseModel):
     user_email: Optional[str] = None
     created_at: str
 
+# Settings Models
+class PayUSettings(BaseModel):
+    api_key: str
+    api_login: str
+    merchant_id: str
+    account_id: str
+    test_mode: bool = True
+
+class SendGridSettings(BaseModel):
+    api_key: str
+    sender_email: str
+    sender_name: str = "EV Charging System"
+    enabled: bool = True
+
+class AllSettings(BaseModel):
+    payu: Optional[PayUSettings] = None
+    sendgrid: Optional[SendGridSettings] = None
+    invoice_webhook: Optional[InvoiceWebhookConfig] = None
+
+# Email notification helper
+async def send_low_balance_email(card: dict, user_email: str, user_name: str):
+    """Send low balance notification email via SendGrid"""
+    settings = await db.settings.find_one({"type": "sendgrid"}, {"_id": 0})
+    
+    if not settings or not settings.get("enabled") or not settings.get("api_key"):
+        logging.warning("SendGrid not configured, skipping email notification")
+        return False
+    
+    try:
+        sg = SendGridAPIClient(settings["api_key"])
+        
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background-color: #EA580C; padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">⚡ EV Charging System</h1>
+            </div>
+            <div style="padding: 30px; background-color: #f8f9fa;">
+                <h2 style="color: #333;">Low Balance Alert</h2>
+                <p>Hello {user_name},</p>
+                <p>Your RFID card <strong>{card.get('card_number')}</strong> has a low balance.</p>
+                
+                <div style="background-color: #fff; border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="margin: 0; font-size: 14px; color: #666;">Current Balance</p>
+                    <p style="margin: 5px 0 0 0; font-size: 32px; font-weight: bold; color: #DC2626;">
+                        $ {card.get('balance', 0):,.0f} COP
+                    </p>
+                    <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">
+                        Threshold: $ {card.get('low_balance_threshold', 10000):,.0f} COP
+                    </p>
+                </div>
+                
+                <p>Please top up your card to continue using the charging service without interruption.</p>
+                
+                <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                    This is an automated notification from EV Charging System.<br>
+                    Please do not reply to this email.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        message = Mail(
+            from_email=(settings.get("sender_email"), settings.get("sender_name", "EV Charging System")),
+            to_emails=user_email,
+            subject=f"⚠️ Low Balance Alert - RFID Card {card.get('card_number')}",
+            html_content=html_content
+        )
+        
+        response = sg.send(message)
+        logging.info(f"Low balance email sent to {user_email}, status: {response.status_code}")
+        return response.status_code == 202
+        
+    except Exception as e:
+        logging.error(f"Failed to send low balance email: {str(e)}")
+        return False
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
