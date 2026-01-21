@@ -171,6 +171,60 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 def verify_password(password: str, hashed: str) -> bool:
+
+class Charger(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    location: str
+    model: str
+    serial_number: str
+    connector_types: List[str]
+    max_power: float
+    status: str
+    created_at: str
+
+class ChargerCreate(BaseModel):
+    name: str
+    location: str
+    model: str
+    serial_number: str
+    connector_types: List[str]
+    max_power: float
+    status: str = "Available"
+
+class ChargerUpdate(BaseModel):
+    name: Optional[str] = None
+    location: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    connector_types: Optional[List[str]] = None
+    max_power: Optional[float] = None
+    status: Optional[str] = None
+
+class RemoteStartRequest(BaseModel):
+    charger_id: str
+    connector_id: int
+    id_tag: str
+
+class RemoteStopRequest(BaseModel):
+    transaction_id: int
+
+class ReportFilter(BaseModel):
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    account: Optional[str] = None
+    connector_type: Optional[str] = None
+    payment_type: Optional[str] = None
+    payment_status: Optional[str] = None
+
+class ReportData(BaseModel):
+    summary: dict
+    by_account: List[dict]
+    by_connector: List[dict]
+    by_payment_type: List[dict]
+    transactions: List[Transaction]
+
     return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
 
 def create_access_token(data: dict):
