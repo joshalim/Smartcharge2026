@@ -226,8 +226,6 @@ class ReportData(BaseModel):
     by_payment_type: List[dict]
     transactions: List[Transaction]
 
-    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
-
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
