@@ -1,0 +1,248 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+const resources = {
+  en: {
+    translation: {
+      // Navigation
+      'nav.dashboard': 'Dashboard',
+      'nav.transactions': 'Transactions',
+      'nav.import': 'Import',
+      'nav.users': 'Users',
+      'nav.pricing': 'Pricing',
+      'nav.logout': 'Logout',
+      
+      // Auth
+      'auth.signin': 'Sign in to your account',
+      'auth.signup': 'Create a new account',
+      'auth.email': 'Email',
+      'auth.password': 'Password',
+      'auth.name': 'Full Name',
+      'auth.signInBtn': 'Sign In',
+      'auth.createAccount': 'Create Account',
+      'auth.noAccount': "Don't have an account? Sign up",
+      'auth.hasAccount': 'Already have an account? Sign in',
+      
+      // Dashboard
+      'dashboard.title': 'Dashboard',
+      'dashboard.subtitle': 'Overview of your EV charging operations',
+      'dashboard.totalTransactions': 'Total Transactions',
+      'dashboard.totalEnergy': 'Total Energy (kWh)',
+      'dashboard.totalRevenue': 'Total Revenue',
+      'dashboard.activeStations': 'Active Stations',
+      'dashboard.uniqueAccounts': 'Unique Accounts',
+      'dashboard.recentTransactions': 'Recent Transactions',
+      'dashboard.noTransactions': 'No transactions yet. Import data to get started.',
+      
+      // Transactions
+      'transactions.title': 'Transactions',
+      'transactions.subtitle': 'View and manage EV charging transactions',
+      'transactions.filters': 'Filters',
+      'transactions.export': 'Export',
+      'transactions.filterTitle': 'Filter Transactions',
+      'transactions.startDate': 'Start Date',
+      'transactions.endDate': 'End Date',
+      'transactions.station': 'Station',
+      'transactions.account': 'Account',
+      'transactions.allStations': 'All Stations',
+      'transactions.allAccounts': 'All Accounts',
+      'transactions.applyFilters': 'Apply Filters',
+      'transactions.clearFilters': 'Clear',
+      'transactions.txId': 'Tx ID',
+      'transactions.connector': 'Connector',
+      'transactions.startTime': 'Start Time',
+      'transactions.endTime': 'End Time',
+      'transactions.energy': 'Energy (kWh)',
+      'transactions.cost': 'Cost',
+      'transactions.actions': 'Actions',
+      'transactions.noTransactions': 'No transactions found',
+      'transactions.adjustFilters': 'Import data or adjust your filters',
+      'transactions.deleteConfirm': 'Are you sure you want to delete this transaction?',
+      
+      // Import
+      'import.title': 'Import Transactions',
+      'import.subtitle': 'Upload Excel files to import EV charging transactions',
+      'import.dragDrop': 'Drag and drop your Excel file here',
+      'import.or': 'or',
+      'import.selectFile': 'Select File',
+      'import.uploading': 'Uploading...',
+      'import.upload': 'Upload and Import',
+      'import.requiredFormat': 'Required Excel Format',
+      'import.requiredColumns': 'Your Excel file must include the following columns:',
+      'import.note': 'Note:',
+      'import.noteText': 'Transactions with 0 kWh meter value will be automatically skipped.',
+      'import.success': 'Import Successful',
+      'import.withIssues': 'Import Completed with Issues',
+      'import.imported': 'transactions imported',
+      'import.skipped': 'transactions skipped (0 kWh or duplicates)',
+      'import.errors': 'validation errors',
+      'import.validationErrors': 'Validation Errors:',
+      
+      // Users
+      'users.title': 'User Management',
+      'users.subtitle': 'Manage user accounts and permissions',
+      'users.name': 'Name',
+      'users.email': 'Email',
+      'users.role': 'Role',
+      'users.created': 'Created',
+      'users.actions': 'Actions',
+      'users.noUsers': 'No users found',
+      'users.deleteConfirm': 'Are you sure you want to delete this user?',
+      'users.rolePermissions': 'Role Permissions',
+      'users.adminDesc': 'Full access: View, import, export, delete transactions, and manage users',
+      'users.userDesc': 'Can view, import, and export transactions',
+      'users.viewerDesc': 'Read-only access: Can only view transactions and reports',
+      
+      // Pricing
+      'pricing.title': 'Pricing Configuration',
+      'pricing.subtitle': 'Configure pricing per account and connector',
+      'pricing.addNew': 'Add Pricing Rule',
+      'pricing.account': 'Account',
+      'pricing.connector': 'Connector',
+      'pricing.pricePerKwh': 'Price per kWh (COP)',
+      'pricing.actions': 'Actions',
+      'pricing.noPricing': 'No pricing rules configured',
+      'pricing.addFirst': 'Add your first pricing rule to start calculating costs',
+      'pricing.save': 'Save',
+      'pricing.cancel': 'Cancel',
+      'pricing.deleteConfirm': 'Are you sure you want to delete this pricing rule?',
+      
+      // Common
+      'common.loading': 'Loading...',
+      'common.pleaseWait': 'Please wait...',
+      'common.delete': 'Delete',
+      'common.edit': 'Edit',
+      'common.save': 'Save',
+      'common.cancel': 'Cancel',
+      'common.close': 'Close',
+    }
+  },
+  es: {
+    translation: {
+      // Navigation
+      'nav.dashboard': 'Panel',
+      'nav.transactions': 'Transacciones',
+      'nav.import': 'Importar',
+      'nav.users': 'Usuarios',
+      'nav.pricing': 'Precios',
+      'nav.logout': 'Cerrar Sesión',
+      
+      // Auth
+      'auth.signin': 'Inicia sesión en tu cuenta',
+      'auth.signup': 'Crear una cuenta nueva',
+      'auth.email': 'Correo Electrónico',
+      'auth.password': 'Contraseña',
+      'auth.name': 'Nombre Completo',
+      'auth.signInBtn': 'Iniciar Sesión',
+      'auth.createAccount': 'Crear Cuenta',
+      'auth.noAccount': '¿No tienes cuenta? Regístrate',
+      'auth.hasAccount': '¿Ya tienes cuenta? Inicia sesión',
+      
+      // Dashboard
+      'dashboard.title': 'Panel',
+      'dashboard.subtitle': 'Resumen de tus operaciones de carga EV',
+      'dashboard.totalTransactions': 'Total de Transacciones',
+      'dashboard.totalEnergy': 'Energía Total (kWh)',
+      'dashboard.totalRevenue': 'Ingresos Totales',
+      'dashboard.activeStations': 'Estaciones Activas',
+      'dashboard.uniqueAccounts': 'Cuentas Únicas',
+      'dashboard.recentTransactions': 'Transacciones Recientes',
+      'dashboard.noTransactions': 'No hay transacciones aún. Importa datos para comenzar.',
+      
+      // Transactions
+      'transactions.title': 'Transacciones',
+      'transactions.subtitle': 'Ver y gestionar transacciones de carga EV',
+      'transactions.filters': 'Filtros',
+      'transactions.export': 'Exportar',
+      'transactions.filterTitle': 'Filtrar Transacciones',
+      'transactions.startDate': 'Fecha Inicio',
+      'transactions.endDate': 'Fecha Fin',
+      'transactions.station': 'Estación',
+      'transactions.account': 'Cuenta',
+      'transactions.allStations': 'Todas las Estaciones',
+      'transactions.allAccounts': 'Todas las Cuentas',
+      'transactions.applyFilters': 'Aplicar Filtros',
+      'transactions.clearFilters': 'Limpiar',
+      'transactions.txId': 'ID Tx',
+      'transactions.connector': 'Conector',
+      'transactions.startTime': 'Hora Inicio',
+      'transactions.endTime': 'Hora Fin',
+      'transactions.energy': 'Energía (kWh)',
+      'transactions.cost': 'Costo',
+      'transactions.actions': 'Acciones',
+      'transactions.noTransactions': 'No se encontraron transacciones',
+      'transactions.adjustFilters': 'Importa datos o ajusta tus filtros',
+      'transactions.deleteConfirm': '¿Estás seguro de que deseas eliminar esta transacción?',
+      
+      // Import
+      'import.title': 'Importar Transacciones',
+      'import.subtitle': 'Sube archivos Excel para importar transacciones de carga EV',
+      'import.dragDrop': 'Arrastra y suelta tu archivo Excel aquí',
+      'import.or': 'o',
+      'import.selectFile': 'Seleccionar Archivo',
+      'import.uploading': 'Subiendo...',
+      'import.upload': 'Subir e Importar',
+      'import.requiredFormat': 'Formato Excel Requerido',
+      'import.requiredColumns': 'Tu archivo Excel debe incluir las siguientes columnas:',
+      'import.note': 'Nota:',
+      'import.noteText': 'Las transacciones con valor de 0 kWh se omitirán automáticamente.',
+      'import.success': 'Importación Exitosa',
+      'import.withIssues': 'Importación Completada con Problemas',
+      'import.imported': 'transacciones importadas',
+      'import.skipped': 'transacciones omitidas (0 kWh o duplicados)',
+      'import.errors': 'errores de validación',
+      'import.validationErrors': 'Errores de Validación:',
+      
+      // Users
+      'users.title': 'Gestión de Usuarios',
+      'users.subtitle': 'Administrar cuentas de usuario y permisos',
+      'users.name': 'Nombre',
+      'users.email': 'Correo',
+      'users.role': 'Rol',
+      'users.created': 'Creado',
+      'users.actions': 'Acciones',
+      'users.noUsers': 'No se encontraron usuarios',
+      'users.deleteConfirm': '¿Estás seguro de que deseas eliminar este usuario?',
+      'users.rolePermissions': 'Permisos de Rol',
+      'users.adminDesc': 'Acceso completo: Ver, importar, exportar, eliminar transacciones y gestionar usuarios',
+      'users.userDesc': 'Puede ver, importar y exportar transacciones',
+      'users.viewerDesc': 'Acceso de solo lectura: Solo puede ver transacciones e informes',
+      
+      // Pricing
+      'pricing.title': 'Configuración de Precios',
+      'pricing.subtitle': 'Configurar precios por cuenta y conector',
+      'pricing.addNew': 'Agregar Regla de Precio',
+      'pricing.account': 'Cuenta',
+      'pricing.connector': 'Conector',
+      'pricing.pricePerKwh': 'Precio por kWh (COP)',
+      'pricing.actions': 'Acciones',
+      'pricing.noPricing': 'No hay reglas de precios configuradas',
+      'pricing.addFirst': 'Agrega tu primera regla de precio para comenzar a calcular costos',
+      'pricing.save': 'Guardar',
+      'pricing.cancel': 'Cancelar',
+      'pricing.deleteConfirm': '¿Estás seguro de que deseas eliminar esta regla de precio?',
+      
+      // Common
+      'common.loading': 'Cargando...',
+      'common.pleaseWait': 'Por favor espera...',
+      'common.delete': 'Eliminar',
+      'common.edit': 'Editar',
+      'common.save': 'Guardar',
+      'common.cancel': 'Cancelar',
+      'common.close': 'Cerrar',
+    }
+  }
+};
+
+i18n
+  .use(initReactI18next)
+  .init({
+    resources,
+    lng: localStorage.getItem('language') || 'en',
+    fallbackLng: 'en',
+    interpolation: {
+      escapeValue: false
+    }
+  });
+
+export default i18n;

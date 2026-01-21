@@ -64,6 +64,19 @@ class TokenResponse(BaseModel):
     token_type: str
     user: User
 
+class PricingRule(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    account: str
+    connector: str
+    price_per_kwh: float
+    created_at: str
+
+class PricingRuleCreate(BaseModel):
+    account: str
+    connector: str
+    price_per_kwh: float
+
 class Transaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
@@ -74,6 +87,7 @@ class Transaction(BaseModel):
     start_time: str
     end_time: str
     meter_value: float
+    cost: float
     created_at: str
 
 class TransactionCreate(BaseModel):
@@ -94,6 +108,7 @@ class TransactionFilter(BaseModel):
 class DashboardStats(BaseModel):
     total_transactions: int
     total_energy: float
+    total_revenue: float
     active_stations: int
     unique_accounts: int
     recent_transactions: List[Transaction]
@@ -146,6 +161,17 @@ def require_role(*allowed_roles: str):
         return current_user
     return role_checker
 
+async def get_pricing(account: str, connector: str) -> float:
+    """Get price per kWh for account/connector combination"""
+    pricing = await db.pricing.find_one({"account": account, "connector": connector}, {"_id": 0})
+    if pricing:
+        return pricing['price_per_kwh']
+    # Default pricing if not found
+    default_pricing = await db.pricing.find_one({"account": account, "connector": "default"}, {"_id": 0})
+    if default_pricing:
+        return default_pricing['price_per_kwh']
+    return 500.0  # Default COP per kWh
+
 # Auth Routes
 @api_router.post("/auth/register", response_model=User)
 async def register(user_data: UserCreate):
@@ -185,15 +211,65 @@ async def login(credentials: UserLogin):
 async def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+# Pricing Routes
+@api_router.get("/pricing", response_model=List[PricingRule])
+async def get_pricing_rules(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    pricing_rules = await db.pricing.find({}, {"_id": 0}).to_list(100)
+    return [PricingRule(**p) for p in pricing_rules]
+
+@api_router.post("/pricing", response_model=PricingRule)
+async def create_pricing_rule(
+    pricing_data: PricingRuleCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    # Check if rule exists
+    existing = await db.pricing.find_one({
+        "account": pricing_data.account,
+        "connector": pricing_data.connector
+    })
+    
+    if existing:
+        # Update existing
+        await db.pricing.update_one(
+            {"account": pricing_data.account, "connector": pricing_data.connector},
+            {"$set": {"price_per_kwh": pricing_data.price_per_kwh}}
+        )
+        existing["price_per_kwh"] = pricing_data.price_per_kwh
+        return PricingRule(**{k: v for k, v in existing.items() if k != "_id"})
+    
+    pricing_rule = {
+        "id": str(uuid.uuid4()),
+        **pricing_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.pricing.insert_one(pricing_rule)
+    return PricingRule(**{k: v for k, v in pricing_rule.items() if k != "_id"})
+
+@api_router.delete("/pricing/{pricing_id}")
+async def delete_pricing_rule(
+    pricing_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    result = await db.pricing.delete_one({"id": pricing_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing rule not found")
+    return {"message": "Pricing rule deleted successfully"}
+
 # Transaction Routes
 @api_router.post("/transactions", response_model=Transaction)
 async def create_transaction(
     transaction_data: TransactionCreate,
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
 ):
+    # Calculate cost
+    price_per_kwh = await get_pricing(transaction_data.account, transaction_data.connector)
+    cost = transaction_data.meter_value * price_per_kwh
+    
     transaction = {
         "id": str(uuid.uuid4()),
         **transaction_data.model_dump(),
+        "cost": round(cost, 2),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -267,7 +343,7 @@ async def import_transactions(
     skipped = 0
     
     for idx, row in df.iterrows():
-        row_num = idx + 2  # Excel rows start at 1, header is row 1
+        row_num = idx + 2
         
         # Validate meter value
         try:
@@ -280,7 +356,7 @@ async def import_transactions(
             ))
             continue
         
-        # Skip 0 values as per requirement
+        # Skip 0 values
         if meter_value == 0:
             skipped += 1
             continue
@@ -308,16 +384,23 @@ async def import_transactions(
             skipped += 1
             continue
         
+        # Get pricing and calculate cost
+        account = str(row['Account']) if not pd.isna(row['Account']) else ""
+        connector = str(row['Connector']) if not pd.isna(row['Connector']) else ""
+        price_per_kwh = await get_pricing(account, connector)
+        cost = meter_value * price_per_kwh
+        
         # Create transaction
         transaction = {
             "id": str(uuid.uuid4()),
             "tx_id": str(row['TxID']),
             "station": str(row['Station']),
-            "connector": str(row['Connector']) if not pd.isna(row['Connector']) else "",
-            "account": str(row['Account']) if not pd.isna(row['Account']) else "",
+            "connector": connector,
+            "account": account,
             "start_time": str(row['Start time']) if not pd.isna(row['Start time']) else "",
             "end_time": str(row['End Time']) if not pd.isna(row['End Time']) else "",
             "meter_value": meter_value,
+            "cost": round(cost, 2),
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -336,12 +419,17 @@ async def import_transactions(
 async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
     total_transactions = await db.transactions.count_documents({})
     
-    # Calculate total energy
+    # Calculate total energy and revenue
     pipeline = [
-        {"$group": {"_id": None, "total_energy": {"$sum": "$meter_value"}}}
+        {"$group": {
+            "_id": None,
+            "total_energy": {"$sum": "$meter_value"},
+            "total_revenue": {"$sum": "$cost"}
+        }}
     ]
-    energy_result = await db.transactions.aggregate(pipeline).to_list(1)
-    total_energy = energy_result[0]["total_energy"] if energy_result else 0
+    result = await db.transactions.aggregate(pipeline).to_list(1)
+    total_energy = result[0]["total_energy"] if result else 0
+    total_revenue = result[0]["total_revenue"] if result else 0
     
     # Count unique stations
     stations = await db.transactions.distinct("station")
@@ -358,6 +446,7 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
     return DashboardStats(
         total_transactions=total_transactions,
         total_energy=round(total_energy, 2),
+        total_revenue=round(total_revenue, 2),
         active_stations=active_stations,
         unique_accounts=unique_accounts,
         recent_transactions=recent_transactions
