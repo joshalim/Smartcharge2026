@@ -780,6 +780,78 @@ async def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Role updated successfully"}
 
+@api_router.post("/users", response_model=User)
+async def create_user(
+    user_data: UserCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Create a new user (Admin only)"""
+    # Check if email already exists
+    existing = await db.users.find_one({"email": user_data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    if user_data.role not in [UserRole.ADMIN, UserRole.USER, UserRole.VIEWER]:
+        raise HTTPException(status_code=400, detail="Invalid role")
+    
+    password_hash = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "name": user_data.name,
+        "email": user_data.email,
+        "password_hash": password_hash,
+        "role": user_data.role,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.users.insert_one(new_user)
+    
+    return User(**{k: v for k, v in new_user.items() if k not in ['_id', 'password_hash']})
+
+@api_router.patch("/users/{user_id}", response_model=User)
+async def update_user(
+    user_id: str,
+    user_data: UserUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Update user details (Admin only)"""
+    existing = await db.users.find_one({"id": user_id})
+    if not existing:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    update_dict = {}
+    
+    if user_data.name:
+        update_dict["name"] = user_data.name
+    
+    if user_data.email:
+        # Check if email already used by another user
+        email_check = await db.users.find_one({"email": user_data.email, "id": {"$ne": user_id}})
+        if email_check:
+            raise HTTPException(status_code=400, detail="Email already in use")
+        update_dict["email"] = user_data.email
+    
+    if user_data.password:
+        update_dict["password_hash"] = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    if update_dict:
+        await db.users.update_one({"id": user_id}, {"$set": update_dict})
+    
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    return User(**updated_user)
+
+@api_router.get("/users/{user_id}", response_model=User)
+async def get_user(
+    user_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Get a single user by ID"""
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return User(**user)
+
 # RFID Card Management
 @api_router.get("/rfid-cards", response_model=List[RFIDCard])
 async def get_all_rfid_cards(current_user: User = Depends(require_role(UserRole.ADMIN))):
