@@ -7,6 +7,7 @@ import Transactions from './pages/Transactions';
 import Import from './pages/Import';
 import Users from './pages/Users';
 import Pricing from './pages/Pricing';
+import OCPP from './pages/OCPP';
 import Layout from './components/Layout';
 import './App.css';
 
