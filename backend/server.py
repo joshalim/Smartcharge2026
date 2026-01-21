@@ -484,14 +484,23 @@ def calculate_charging_duration(start_time: str, end_time: str) -> str:
     except:
         return "N/A"
 
-async def get_pricing(account: str, connector: str, connector_type: Optional[str] = None) -> float:
-    """Get price per kWh based on account and connector"""
-    # Check if account is in special group
+async def get_pricing(account: str, connector: str, connector_type: Optional[str] = None, user_id: Optional[str] = None) -> float:
+    """Get price per kWh based on account, connector, and user's pricing group"""
+    
+    # First check if user has a pricing group assigned
+    if user_id:
+        user = await db.users.find_one({"id": user_id}, {"_id": 0, "pricing_group_id": 1})
+        if user and user.get("pricing_group_id"):
+            group = await db.pricing_groups.find_one({"id": user["pricing_group_id"]}, {"_id": 0})
+            if group and group.get("connector_pricing") and connector_type:
+                pricing = group["connector_pricing"]
+                if connector_type in pricing:
+                    return pricing[connector_type]
+    
+    # Check if account is in special group (legacy support)
     if account in SPECIAL_ACCOUNTS:
-        # Use connector type pricing
         if connector_type and connector_type in CONNECTOR_TYPE_PRICING:
             return CONNECTOR_TYPE_PRICING[connector_type]
-        # Fallback to default if connector type not specified
         return 500.0
     
     # For other accounts, use custom pricing from database
@@ -503,6 +512,10 @@ async def get_pricing(account: str, connector: str, connector_type: Optional[str
     default_pricing = await db.pricing.find_one({"account": account, "connector": "default"}, {"_id": 0})
     if default_pricing:
         return default_pricing['price_per_kwh']
+    
+    # Fall back to connector type pricing
+    if connector_type and connector_type in CONNECTOR_TYPE_PRICING:
+        return CONNECTOR_TYPE_PRICING[connector_type]
     
     return 500.0
 
