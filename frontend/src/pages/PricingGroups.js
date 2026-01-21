@@ -453,7 +453,7 @@ function PricingGroups() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-orange-600 font-bold">3.</span>
-            When users charge, their group's pricing is automatically applied
+            When users charge, their group&apos;s pricing is automatically applied
           </li>
           <li className="flex items-start gap-2">
             <span className="text-orange-600 font-bold">4.</span>
