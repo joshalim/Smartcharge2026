@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle2, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function Import() {
+  const { t } = useTranslation();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
@@ -75,17 +77,16 @@ function Import() {
     <div className="space-y-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
       <div>
         <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2" style={{ fontFamily: 'Chivo, sans-serif' }} data-testid="import-title">
-          Import Transactions
+          {t('import.title')}
         </h1>
-        <p className="text-slate-500 dark:text-slate-400">Upload Excel files to import EV charging transactions</p>
+        <p className="text-slate-500 dark:text-slate-400">{t('import.subtitle')}</p>
       </div>
 
-      {/* Upload Area */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8">
         <div
           className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${
             dragActive
-              ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20'
+              ? 'border-orange-500 bg-orange-50 dark:bg-orange-950/20'
               : 'border-slate-300 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-600'
           }`}
           onDragEnter={handleDrag}
@@ -105,13 +106,13 @@ function Import() {
           />
           
           <div className="flex flex-col items-center gap-4">
-            <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-full">
-              <FileSpreadsheet className="w-12 h-12 text-indigo-600 dark:text-indigo-400" />
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/30 rounded-full">
+              <FileSpreadsheet className="w-12 h-12 text-orange-600 dark:text-orange-400" />
             </div>
             
             {file ? (
               <div className="flex items-center gap-3 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                <FileSpreadsheet className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                <FileSpreadsheet className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                 <span className="font-medium text-slate-900 dark:text-slate-100">{file.name}</span>
                 <button
                   onClick={() => setFile(null)}
@@ -125,16 +126,16 @@ function Import() {
               <>
                 <div>
                   <p className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                    Drag and drop your Excel file here
+                    {t('import.dragDrop')}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">or</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('import.or')}</p>
                 </div>
                 <label
                   htmlFor="file-upload"
-                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md cursor-pointer transition-colors"
+                  className="px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-md cursor-pointer transition-colors"
                   data-testid="select-file-btn"
                 >
-                  Select File
+                  {t('import.selectFile')}
                 </label>
               </>
             )}
@@ -146,18 +147,18 @@ function Import() {
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-8 py-3 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               data-testid="upload-btn"
             >
               {uploading ? (
                 <>
                   <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  Uploading...
+                  {t('import.uploading')}
                 </>
               ) : (
                 <>
                   <Upload className="w-5 h-5" />
-                  Upload and Import
+                  {t('import.upload')}
                 </>
               )}
             </button>
@@ -165,27 +166,25 @@ function Import() {
         )}
       </div>
 
-      {/* Required Format Info */}
       <div className="bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
         <h3 className="text-lg font-bold mb-3" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          Required Excel Format
+          {t('import.requiredFormat')}
         </h3>
         <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-          Your Excel file must include the following columns:
+          {t('import.requiredColumns')}
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {['TxID', 'Station', 'Connector', 'Account', 'Start time', 'End Time', 'Meter value(kW.h)'].map((col) => (
             <div key={col} className="px-3 py-2 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
-              <code className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{col}</code>
+              <code className="text-sm font-medium text-orange-600 dark:text-orange-400">{col}</code>
             </div>
           ))}
         </div>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-4">
-          <strong>Note:</strong> Transactions with 0 kWh meter value will be automatically skipped.
+          <strong>{t('import.note')}</strong> {t('import.noteText')}
         </p>
       </div>
 
-      {/* Import Result */}
       {result && (
         <div
           className={`rounded-xl border p-6 ${
@@ -203,20 +202,20 @@ function Import() {
             )}
             <div>
               <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'Chivo, sans-serif' }}>
-                {result.success ? 'Import Successful' : 'Import Completed with Issues'}
+                {result.success ? t('import.success') : t('import.withIssues')}
               </h3>
               <div className="space-y-1 text-sm">
                 <p className="text-slate-700 dark:text-slate-300">
-                  <strong>{result.imported_count}</strong> transactions imported
+                  <strong>{result.imported_count}</strong> {t('import.imported')}
                 </p>
                 {result.skipped_count > 0 && (
                   <p className="text-slate-700 dark:text-slate-300">
-                    <strong>{result.skipped_count}</strong> transactions skipped (0 kWh or duplicates)
+                    <strong>{result.skipped_count}</strong> {t('import.skipped')}
                   </p>
                 )}
                 {result.errors && result.errors.length > 0 && (
                   <p className="text-slate-700 dark:text-slate-300">
-                    <strong>{result.errors.length}</strong> validation errors
+                    <strong>{result.errors.length}</strong> {t('import.errors')}
                   </p>
                 )}
               </div>
@@ -225,7 +224,7 @@ function Import() {
 
           {result.errors && result.errors.length > 0 && (
             <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-800">
-              <h4 className="font-semibold mb-2 text-sm">Validation Errors:</h4>
+              <h4 className="font-semibold mb-2 text-sm">{t('import.validationErrors')}</h4>
               <div className="space-y-2 max-h-60 overflow-y-auto" data-testid="validation-errors">
                 {result.errors.map((error, idx) => (
                   <div key={idx} className="text-sm p-3 bg-white dark:bg-slate-900 rounded-md border border-amber-200 dark:border-amber-800">
