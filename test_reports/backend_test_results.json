@@ -1,0 +1,141 @@
+{
+  "summary": {
+    "tests_run": 22,
+    "tests_passed": 21,
+    "success_rate": 95.5
+  },
+  "results": [
+    {
+      "test": "Admin Login",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:29.995571"
+    },
+    {
+      "test": "User Login",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.279058"
+    },
+    {
+      "test": "Viewer Login",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.558393"
+    },
+    {
+      "test": "Invalid Login",
+      "success": true,
+      "details": "Status: 401",
+      "timestamp": "2026-01-21T13:39:30.598702"
+    },
+    {
+      "test": "Get Current User (Admin)",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.635435"
+    },
+    {
+      "test": "Unauthorized Access",
+      "success": false,
+      "details": "Status: 403, Expected: 401, Error: Not authenticated",
+      "timestamp": "2026-01-21T13:39:30.670681"
+    },
+    {
+      "test": "Viewer Access to Admin Endpoint",
+      "success": true,
+      "details": "Status: 403",
+      "timestamp": "2026-01-21T13:39:30.715297"
+    },
+    {
+      "test": "Get Dashboard Stats",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.754702"
+    },
+    {
+      "test": "Dashboard Stats Structure",
+      "success": true,
+      "details": "All required fields present",
+      "timestamp": "2026-01-21T13:39:30.755395"
+    },
+    {
+      "test": "Create Transaction",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.801393"
+    },
+    {
+      "test": "Get Transactions",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.839919"
+    },
+    {
+      "test": "Filter Transactions by Station",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.876853"
+    },
+    {
+      "test": "Delete Transaction (Admin)",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:30.921414"
+    },
+    {
+      "test": "Viewer Cannot Create Transaction",
+      "success": true,
+      "details": "Status: 403",
+      "timestamp": "2026-01-21T13:39:30.959030"
+    },
+    {
+      "test": "Import Excel File",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:31.049810"
+    },
+    {
+      "test": "Excel Import Results",
+      "success": true,
+      "details": "Imported: 7, Skipped: 1, Errors: 0",
+      "timestamp": "2026-01-21T13:39:31.050661"
+    },
+    {
+      "test": "Invalid File Format",
+      "success": true,
+      "details": "Status: 400",
+      "timestamp": "2026-01-21T13:39:31.083997"
+    },
+    {
+      "test": "Get Users (Admin)",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:31.124569"
+    },
+    {
+      "test": "Users List Structure",
+      "success": true,
+      "details": "Found 3 users",
+      "timestamp": "2026-01-21T13:39:31.125185"
+    },
+    {
+      "test": "User Cannot Access User Management",
+      "success": true,
+      "details": "Status: 403",
+      "timestamp": "2026-01-21T13:39:31.169890"
+    },
+    {
+      "test": "Get Stations Filter",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:31.204788"
+    },
+    {
+      "test": "Get Accounts Filter",
+      "success": true,
+      "details": "Status: 200",
+      "timestamp": "2026-01-21T13:39:31.241361"
+    }
+  ]
+}
