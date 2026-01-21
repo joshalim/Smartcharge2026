@@ -747,6 +747,283 @@ async def get_active_ocpp_transactions(current_user: User = Depends(get_current_
     active_txs = await db.ocpp_transactions.find({"status": "active"}, {"_id": 0}).to_list(50)
     return active_txs
 
+# Charger Management
+@api_router.get("/chargers", response_model=List[Charger])
+async def get_chargers(current_user: User = Depends(get_current_user)):
+    chargers = await db.chargers.find({}, {"_id": 0}).to_list(100)
+    return [Charger(**c) for c in chargers]
+
+@api_router.post("/chargers", response_model=Charger)
+async def create_charger(
+    charger_data: ChargerCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    charger = {
+        "id": str(uuid.uuid4()),
+        **charger_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.chargers.insert_one(charger)
+    return Charger(**{k: v for k, v in charger.items() if k != "_id"})
+
+@api_router.patch("/chargers/{charger_id}", response_model=Charger)
+async def update_charger(
+    charger_id: str,
+    update_data: ChargerUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    if update_dict:
+        result = await db.chargers.update_one({"id": charger_id}, {"$set": update_dict})
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Charger not found")
+    
+    charger = await db.chargers.find_one({"id": charger_id}, {"_id": 0})
+    return Charger(**charger)
+
+@api_router.delete("/chargers/{charger_id}")
+async def delete_charger(
+    charger_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    result = await db.chargers.delete_one({"id": charger_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Charger not found")
+    return {"message": "Charger deleted successfully"}
+
+# OCPP Remote Control
+@api_router.post("/ocpp/remote-start")
+async def remote_start_transaction(
+    request: RemoteStartRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
+):
+    """OCPP 1.6 RemoteStartTransaction"""
+    transaction_id = abs(hash(request.id_tag + datetime.now(timezone.utc).isoformat())) % (10 ** 8)
+    
+    ocpp_transaction = {
+        "transaction_id": transaction_id,
+        "charger_id": request.charger_id,
+        "connector_id": request.connector_id,
+        "id_tag": request.id_tag,
+        "meter_start": 0,
+        "start_timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "active",
+        "remote_start": True
+    }
+    await db.ocpp_transactions.insert_one(ocpp_transaction)
+    
+    # Update charger status
+    await db.chargers.update_one(
+        {"id": request.charger_id},
+        {"$set": {"status": "Charging"}}
+    )
+    
+    return {
+        "status": "Accepted",
+        "transactionId": transaction_id
+    }
+
+@api_router.post("/ocpp/remote-stop")
+async def remote_stop_transaction(
+    request: RemoteStopRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
+):
+    """OCPP 1.6 RemoteStopTransaction"""
+    ocpp_tx = await db.ocpp_transactions.find_one({"transaction_id": request.transaction_id})
+    
+    if not ocpp_tx:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    await db.ocpp_transactions.update_one(
+        {"transaction_id": request.transaction_id},
+        {"$set": {
+            "status": "stopped",
+            "stop_timestamp": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update charger status
+    if "charger_id" in ocpp_tx:
+        await db.chargers.update_one(
+            {"id": ocpp_tx["charger_id"]},
+            {"$set": {"status": "Available"}}
+        )
+    
+    return {"status": "Accepted"}
+
+# Invoice Generation
+@api_router.get("/transactions/{transaction_id}/invoice")
+async def generate_invoice(
+    transaction_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate PDF invoice for a paid transaction"""
+    transaction = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
+    
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    if transaction.get("payment_status") != "PAID":
+        raise HTTPException(status_code=400, detail="Transaction is not paid")
+    
+    # Create PDF
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    
+    styles = getSampleStyleSheet()
+    
+    # Title
+    title = Paragraph("<b>SMART CHARGE - INVOICE</b>", styles['Title'])
+    elements.append(title)
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # Invoice details
+    invoice_data = [
+        ['Invoice #:', transaction['tx_id']],
+        ['Date:', transaction.get('payment_date', 'N/A')],
+        ['Account:', transaction['account']],
+        ['', ''],
+        ['Station:', transaction['station']],
+        ['Connector:', transaction['connector']],
+        ['Connector Type:', transaction.get('connector_type', 'N/A')],
+        ['', ''],
+        ['Start Time:', transaction['start_time']],
+        ['End Time:', transaction['end_time']],
+        ['Duration:', transaction.get('charging_duration', 'N/A')],
+        ['', ''],
+        ['Energy Consumed:', f"{transaction['meter_value']:.2f} kWh"],
+        ['', ''],
+        ['<b>Total Amount:</b>', f"<b>${transaction['cost']:,.0f} COP</b>"],
+        ['Payment Method:', transaction.get('payment_type', 'N/A')],
+        ['Payment Status:', 'PAID'],
+    ]
+    
+    table = Table(invoice_data, colWidths=[3*inch, 3*inch])
+    table.setStyle(TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('FONTNAME', (0, 14), (-1, 14), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 14), (-1, 14), 14),
+        ('TEXTCOLOR', (0, 14), (-1, 14), colors.HexColor('#EA580C')),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    
+    elements.append(table)
+    elements.append(Spacer(1, 0.5*inch))
+    
+    # Footer
+    footer = Paragraph("<i>Thank you for using Smart Charge!</i>", styles['Normal'])
+    elements.append(footer)
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=invoice_{transaction['tx_id']}.pdf"}
+    )
+
+# Advanced Reporting
+@api_router.post("/reports/generate", response_model=ReportData)
+async def generate_report(
+    filters: ReportFilter,
+    current_user: User = Depends(get_current_user)
+):
+    """Generate comprehensive report with filtering"""
+    query = {}
+    
+    if filters.start_date:
+        query["start_time"] = {"$gte": filters.start_date}
+    if filters.end_date:
+        if "start_time" in query:
+            query["start_time"]["$lte"] = filters.end_date
+        else:
+            query["start_time"] = {"$lte": filters.end_date}
+    if filters.account:
+        query["account"] = filters.account
+    if filters.connector_type:
+        query["connector_type"] = filters.connector_type
+    if filters.payment_type:
+        query["payment_type"] = filters.payment_type
+    if filters.payment_status:
+        query["payment_status"] = filters.payment_status
+    
+    # Get transactions
+    transactions = await db.transactions.find(query, {"_id": 0}).to_list(1000)
+    
+    # Summary
+    total_transactions = len(transactions)
+    total_energy = sum(t["meter_value"] for t in transactions)
+    total_revenue = sum(t["cost"] for t in transactions)
+    paid_count = len([t for t in transactions if t.get("payment_status") == "PAID"])
+    paid_revenue = sum(t["cost"] for t in transactions if t.get("payment_status") == "PAID")
+    
+    summary = {
+        "total_transactions": total_transactions,
+        "total_energy": round(total_energy, 2),
+        "total_revenue": round(total_revenue, 2),
+        "paid_transactions": paid_count,
+        "paid_revenue": round(paid_revenue, 2),
+        "unpaid_revenue": round(total_revenue - paid_revenue, 2)
+    }
+    
+    # By Account
+    by_account = {}
+    for tx in transactions:
+        acc = tx["account"]
+        if acc not in by_account:
+            by_account[acc] = {"account": acc, "transactions": 0, "energy": 0, "revenue": 0}
+        by_account[acc]["transactions"] += 1
+        by_account[acc]["energy"] += tx["meter_value"]
+        by_account[acc]["revenue"] += tx["cost"]
+    
+    by_account_list = [
+        {**v, "energy": round(v["energy"], 2), "revenue": round(v["revenue"], 2)}
+        for v in sorted(by_account.values(), key=lambda x: x["revenue"], reverse=True)
+    ]
+    
+    # By Connector Type
+    by_connector = {}
+    for tx in transactions:
+        conn_type = tx.get("connector_type", "Unknown")
+        if conn_type not in by_connector:
+            by_connector[conn_type] = {"connector_type": conn_type, "transactions": 0, "energy": 0, "revenue": 0}
+        by_connector[conn_type]["transactions"] += 1
+        by_connector[conn_type]["energy"] += tx["meter_value"]
+        by_connector[conn_type]["revenue"] += tx["cost"]
+    
+    by_connector_list = [
+        {**v, "energy": round(v["energy"], 2), "revenue": round(v["revenue"], 2)}
+        for v in sorted(by_connector.values(), key=lambda x: x["revenue"], reverse=True)
+    ]
+    
+    # By Payment Type
+    by_payment = {}
+    for tx in transactions:
+        if tx.get("payment_status") == "PAID":
+            payment_type = tx.get("payment_type", "Unknown")
+            if payment_type not in by_payment:
+                by_payment[payment_type] = {"payment_type": payment_type, "transactions": 0, "revenue": 0}
+            by_payment[payment_type]["transactions"] += 1
+            by_payment[payment_type]["revenue"] += tx["cost"]
+    
+    by_payment_list = [
+        {**v, "revenue": round(v["revenue"], 2)}
+        for v in sorted(by_payment.values(), key=lambda x: x["revenue"], reverse=True)
+    ]
+    
+    return ReportData(
+        summary=summary,
+        by_account=by_account_list,
+        by_connector=by_connector_list,
+        by_payment_type=by_payment_list,
+        transactions=[Transaction(**t) for t in transactions[:100]]
+    )
+
+
 app.include_router(api_router)
 
 app.add_middleware(
