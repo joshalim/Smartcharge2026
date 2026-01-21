@@ -8,6 +8,8 @@ import Import from './pages/Import';
 import Users from './pages/Users';
 import Pricing from './pages/Pricing';
 import OCPP from './pages/OCPP';
+import Chargers from './pages/Chargers';
+import Reports from './pages/Reports';
 import Layout from './components/Layout';
 import './App.css';
 
