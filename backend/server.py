@@ -249,6 +249,7 @@ class RFIDCard(BaseModel):
     user_email: Optional[str] = None
     balance: float
     status: str  # active, inactive, blocked
+    low_balance_threshold: float = 10000.0  # Default 10,000 COP
     created_at: str
 
 class RFIDCardCreate(BaseModel):
@@ -256,10 +257,12 @@ class RFIDCardCreate(BaseModel):
     user_id: str
     balance: float = 0.0
     status: str = "active"
+    low_balance_threshold: float = 10000.0
 
 class RFIDCardUpdate(BaseModel):
     card_number: Optional[str] = None
     status: Optional[str] = None
+    low_balance_threshold: Optional[float] = None
 
 class RFIDTopUp(BaseModel):
     amount: float
