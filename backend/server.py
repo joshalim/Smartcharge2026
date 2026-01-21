@@ -101,6 +101,32 @@ class PricingRuleCreate(BaseModel):
     connector: str
     price_per_kwh: float
 
+# Pricing Group Models
+class ConnectorPricing(BaseModel):
+    CCS2: float = 2500.0
+    CHADEMO: float = 2000.0
+    J1772: float = 1500.0
+
+class PricingGroup(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    name: str
+    description: Optional[str] = None
+    connector_pricing: dict
+    user_count: int = 0
+    created_at: str
+    updated_at: Optional[str] = None
+
+class PricingGroupCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    connector_pricing: ConnectorPricing
+
+class PricingGroupUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    connector_pricing: Optional[ConnectorPricing] = None
+
 class Transaction(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
