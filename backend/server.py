@@ -588,6 +588,152 @@ async def delete_pricing_rule(
         raise HTTPException(status_code=404, detail="Pricing rule not found")
     return {"message": "Pricing rule deleted successfully"}
 
+# Pricing Group Routes
+@api_router.get("/pricing-groups", response_model=List[PricingGroup])
+async def get_pricing_groups(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Get all pricing groups with user counts"""
+    groups = await db.pricing_groups.find({}, {"_id": 0}).to_list(100)
+    
+    # Add user counts
+    for group in groups:
+        user_count = await db.users.count_documents({"pricing_group_id": group["id"]})
+        group["user_count"] = user_count
+    
+    return [PricingGroup(**g) for g in groups]
+
+@api_router.get("/pricing-groups/{group_id}", response_model=PricingGroup)
+async def get_pricing_group(
+    group_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Get a single pricing group"""
+    group = await db.pricing_groups.find_one({"id": group_id}, {"_id": 0})
+    if not group:
+        raise HTTPException(status_code=404, detail="Pricing group not found")
+    
+    user_count = await db.users.count_documents({"pricing_group_id": group_id})
+    group["user_count"] = user_count
+    return PricingGroup(**group)
+
+@api_router.post("/pricing-groups", response_model=PricingGroup)
+async def create_pricing_group(
+    group_data: PricingGroupCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Create a new pricing group"""
+    existing = await db.pricing_groups.find_one({"name": group_data.name})
+    if existing:
+        raise HTTPException(status_code=400, detail="Group name already exists")
+    
+    group = {
+        "id": str(uuid.uuid4()),
+        "name": group_data.name,
+        "description": group_data.description,
+        "connector_pricing": group_data.connector_pricing.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.pricing_groups.insert_one(group)
+    group["user_count"] = 0
+    return PricingGroup(**{k: v for k, v in group.items() if k != "_id"})
+
+@api_router.patch("/pricing-groups/{group_id}", response_model=PricingGroup)
+async def update_pricing_group(
+    group_id: str,
+    update_data: PricingGroupUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Update a pricing group"""
+    existing = await db.pricing_groups.find_one({"id": group_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Pricing group not found")
+    
+    update_dict = {}
+    
+    if update_data.name:
+        name_check = await db.pricing_groups.find_one({"name": update_data.name, "id": {"$ne": group_id}})
+        if name_check:
+            raise HTTPException(status_code=400, detail="Group name already exists")
+        update_dict["name"] = update_data.name
+    
+    if update_data.description is not None:
+        update_dict["description"] = update_data.description
+    
+    if update_data.connector_pricing:
+        update_dict["connector_pricing"] = update_data.connector_pricing.model_dump()
+    
+    if update_dict:
+        update_dict["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.pricing_groups.update_one({"id": group_id}, {"$set": update_dict})
+        existing.update(update_dict)
+    
+    user_count = await db.users.count_documents({"pricing_group_id": group_id})
+    existing["user_count"] = user_count
+    return PricingGroup(**existing)
+
+@api_router.delete("/pricing-groups/{group_id}")
+async def delete_pricing_group(
+    group_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Delete a pricing group"""
+    user_count = await db.users.count_documents({"pricing_group_id": group_id})
+    if user_count > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete group with {user_count} assigned users. Reassign users first."
+        )
+    
+    result = await db.pricing_groups.delete_one({"id": group_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing group not found")
+    return {"message": "Pricing group deleted successfully"}
+
+@api_router.get("/pricing-groups/{group_id}/users")
+async def get_group_users(
+    group_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Get all users in a pricing group"""
+    users = await db.users.find(
+        {"pricing_group_id": group_id}, 
+        {"_id": 0, "password_hash": 0}
+    ).to_list(500)
+    return users
+
+@api_router.post("/pricing-groups/{group_id}/users/{user_id}")
+async def assign_user_to_group(
+    group_id: str,
+    user_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Assign a user to a pricing group"""
+    group = await db.pricing_groups.find_one({"id": group_id})
+    if not group:
+        raise HTTPException(status_code=404, detail="Pricing group not found")
+    
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    await db.users.update_one({"id": user_id}, {"$set": {"pricing_group_id": group_id}})
+    return {"message": f"User assigned to group '{group['name']}'"}
+
+@api_router.delete("/pricing-groups/{group_id}/users/{user_id}")
+async def remove_user_from_group(
+    group_id: str,
+    user_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Remove a user from a pricing group"""
+    result = await db.users.update_one(
+        {"id": user_id, "pricing_group_id": group_id},
+        {"$unset": {"pricing_group_id": ""}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="User not found in this group")
+    return {"message": "User removed from group"}
+
 # Transaction Routes
 @api_router.post("/transactions", response_model=Transaction)
 async def create_transaction(
