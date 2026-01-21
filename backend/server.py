@@ -1339,7 +1339,20 @@ async def remote_start_transaction(
     request: RemoteStartRequest,
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
 ):
-    """OCPP 1.6 RemoteStartTransaction"""
+    """OCPP 1.6 RemoteStartTransaction - Linked to RFID cards"""
+    # Check if id_tag is an RFID card number
+    rfid_card = await db.rfid_cards.find_one({"card_number": request.id_tag}, {"_id": 0})
+    
+    if rfid_card:
+        # Validate RFID card is active
+        if rfid_card.get("status") != "active":
+            raise HTTPException(status_code=400, detail="RFID card is not active")
+        
+        # Check minimum balance (e.g., 5000 COP)
+        min_balance = 5000
+        if rfid_card.get("balance", 0) < min_balance:
+            raise HTTPException(status_code=400, detail=f"Insufficient balance. Minimum {min_balance} COP required")
+    
     transaction_id = abs(hash(request.id_tag + datetime.now(timezone.utc).isoformat())) % (10 ** 8)
     
     ocpp_transaction = {
@@ -1347,6 +1360,7 @@ async def remote_start_transaction(
         "charger_id": request.charger_id,
         "connector_id": request.connector_id,
         "id_tag": request.id_tag,
+        "rfid_card_id": rfid_card.get("id") if rfid_card else None,
         "meter_start": 0,
         "start_timestamp": datetime.now(timezone.utc).isoformat(),
         "status": "active",
@@ -1362,7 +1376,8 @@ async def remote_start_transaction(
     
     return {
         "status": "Accepted",
-        "transactionId": transaction_id
+        "transactionId": transaction_id,
+        "rfid_linked": rfid_card is not None
     }
 
 @api_router.post("/ocpp/remote-stop")
@@ -1370,17 +1385,60 @@ async def remote_stop_transaction(
     request: RemoteStopRequest,
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
 ):
-    """OCPP 1.6 RemoteStopTransaction"""
+    """OCPP 1.6 RemoteStopTransaction - Auto deduct from RFID card"""
     ocpp_tx = await db.ocpp_transactions.find_one({"transaction_id": request.transaction_id})
     
     if not ocpp_tx:
         raise HTTPException(status_code=404, detail="Transaction not found")
     
+    # Calculate energy consumed (simulated: random between 1-50 kWh for demo)
+    import random
+    energy_consumed = round(random.uniform(1, 50), 2)
+    
+    # Get charger connector type for pricing
+    charger = await db.chargers.find_one({"id": ocpp_tx.get("charger_id")}, {"_id": 0})
+    connector_type = charger.get("connector_types", ["CCS2"])[0] if charger else "CCS2"
+    price_per_kwh = CONNECTOR_TYPE_PRICING.get(connector_type, 2000.0)
+    cost = round(energy_consumed * price_per_kwh, 0)
+    
+    stop_timestamp = datetime.now(timezone.utc).isoformat()
+    
+    # Auto deduct from RFID card if linked
+    rfid_deducted = False
+    rfid_card = None
+    if ocpp_tx.get("rfid_card_id"):
+        rfid_card = await db.rfid_cards.find_one({"id": ocpp_tx["rfid_card_id"]}, {"_id": 0})
+        if rfid_card:
+            old_balance = rfid_card.get("balance", 0)
+            new_balance = max(0, old_balance - cost)
+            
+            await db.rfid_cards.update_one(
+                {"id": rfid_card["id"]},
+                {"$set": {"balance": new_balance}}
+            )
+            
+            # Log RFID history
+            await log_rfid_history(
+                card_id=rfid_card["id"],
+                card_number=rfid_card.get("card_number"),
+                history_type="charge",
+                amount=-cost,
+                balance_before=old_balance,
+                balance_after=new_balance,
+                description=f"Charging session #{request.transaction_id} - {energy_consumed} kWh",
+                reference_id=str(request.transaction_id)
+            )
+            rfid_deducted = True
+    
     await db.ocpp_transactions.update_one(
         {"transaction_id": request.transaction_id},
         {"$set": {
-            "status": "stopped",
-            "stop_timestamp": datetime.now(timezone.utc).isoformat()
+            "status": "completed",
+            "stop_timestamp": stop_timestamp,
+            "energy_consumed": energy_consumed,
+            "cost": cost,
+            "connector_type": connector_type,
+            "rfid_deducted": rfid_deducted
         }}
     )
     
@@ -1391,7 +1449,155 @@ async def remote_stop_transaction(
             {"$set": {"status": "Available"}}
         )
     
-    return {"status": "Accepted"}
+    # Trigger invoice webhook if configured
+    await trigger_invoice_webhook(ocpp_tx, energy_consumed, cost, connector_type, stop_timestamp, rfid_card)
+    
+    return {
+        "status": "Accepted",
+        "energy_consumed": energy_consumed,
+        "cost": cost,
+        "rfid_deducted": rfid_deducted,
+        "new_balance": rfid_card.get("balance", 0) - cost if rfid_card else None
+    }
+
+# Invoice Webhook API for 3rd Party Integration
+async def trigger_invoice_webhook(ocpp_tx: dict, energy: float, cost: float, 
+                                 connector_type: str, stop_time: str, rfid_card: dict = None):
+    """Send transaction data to configured webhook endpoint"""
+    webhook_config = await db.invoice_webhook_config.find_one({}, {"_id": 0})
+    
+    if not webhook_config or not webhook_config.get("enabled"):
+        return
+    
+    webhook_url = webhook_config.get("webhook_url")
+    if not webhook_url:
+        return
+    
+    # Get user info if RFID card linked
+    user_email = None
+    if rfid_card:
+        user = await db.users.find_one({"id": rfid_card.get("user_id")}, {"_id": 0, "email": 1})
+        user_email = user.get("email") if user else None
+    
+    payload = {
+        "event_type": "transaction_completed",
+        "transaction_id": str(ocpp_tx.get("transaction_id")),
+        "tx_id": f"OCPP-{ocpp_tx.get('transaction_id')}",
+        "account": rfid_card.get("card_number") if rfid_card else ocpp_tx.get("id_tag"),
+        "station": ocpp_tx.get("charger_id", "Unknown"),
+        "connector": str(ocpp_tx.get("connector_id", 1)),
+        "connector_type": connector_type,
+        "start_time": ocpp_tx.get("start_timestamp"),
+        "end_time": stop_time,
+        "charging_duration": None,  # Could calculate from timestamps
+        "meter_value": energy,
+        "cost": cost,
+        "payment_status": "PAID" if rfid_card else "UNPAID",
+        "payment_type": "RFID" if rfid_card else None,
+        "payment_date": stop_time if rfid_card else None,
+        "rfid_card_number": rfid_card.get("card_number") if rfid_card else None,
+        "user_email": user_email,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        headers = {"Content-Type": "application/json"}
+        if webhook_config.get("api_key"):
+            headers["X-API-Key"] = webhook_config["api_key"]
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(webhook_url, json=payload, headers=headers, timeout=10.0)
+            
+            # Log webhook delivery
+            await db.invoice_webhook_logs.insert_one({
+                "id": str(uuid.uuid4()),
+                "transaction_id": str(ocpp_tx.get("transaction_id")),
+                "webhook_url": webhook_url,
+                "payload": payload,
+                "response_status": response.status_code,
+                "response_body": response.text[:500],
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+    except Exception as e:
+        logging.error(f"Invoice webhook error: {str(e)}")
+        await db.invoice_webhook_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "transaction_id": str(ocpp_tx.get("transaction_id")),
+            "webhook_url": webhook_url,
+            "payload": payload,
+            "error": str(e),
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+
+@api_router.get("/invoice-webhook/config")
+async def get_invoice_webhook_config(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Get current invoice webhook configuration"""
+    config = await db.invoice_webhook_config.find_one({}, {"_id": 0})
+    return config or {"webhook_url": "", "api_key": "", "enabled": False}
+
+@api_router.post("/invoice-webhook/config")
+async def set_invoice_webhook_config(
+    config: InvoiceWebhookConfig,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Configure invoice webhook for 3rd party integration"""
+    existing = await db.invoice_webhook_config.find_one({})
+    
+    config_data = {
+        "webhook_url": config.webhook_url,
+        "api_key": config.api_key,
+        "enabled": config.enabled,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user.email
+    }
+    
+    if existing:
+        await db.invoice_webhook_config.update_one({}, {"$set": config_data})
+    else:
+        config_data["id"] = str(uuid.uuid4())
+        config_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.invoice_webhook_config.insert_one(config_data)
+    
+    return {"message": "Webhook configuration saved", **config_data}
+
+@api_router.get("/invoice-webhook/logs")
+async def get_invoice_webhook_logs(
+    limit: int = Query(default=50, le=100),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Get invoice webhook delivery logs"""
+    logs = await db.invoice_webhook_logs.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return logs
+
+@api_router.post("/invoice-webhook/test")
+async def test_invoice_webhook(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Send a test webhook to the configured endpoint"""
+    config = await db.invoice_webhook_config.find_one({}, {"_id": 0})
+    
+    if not config or not config.get("webhook_url"):
+        raise HTTPException(status_code=400, detail="No webhook URL configured")
+    
+    test_payload = {
+        "event_type": "test",
+        "message": "This is a test webhook from EV Charging System",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    
+    try:
+        headers = {"Content-Type": "application/json"}
+        if config.get("api_key"):
+            headers["X-API-Key"] = config["api_key"]
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(config["webhook_url"], json=test_payload, headers=headers, timeout=10.0)
+            
+            return {
+                "success": response.status_code < 400,
+                "status_code": response.status_code,
+                "response": response.text[:500]
+            }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Webhook test failed: {str(e)}")
 
 # Invoice Generation
 @api_router.get("/transactions/{transaction_id}/invoice")
