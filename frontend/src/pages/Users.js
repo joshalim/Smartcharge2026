@@ -99,6 +99,27 @@ function Users() {
     }
   };
 
+  const downloadTemplate = () => {
+    // Create CSV content with headers and example rows
+    const csvContent = [
+      'Name,Email,Role,Group',
+      'John Doe,john@example.com,user,Premium Users',
+      'Jane Smith,jane@example.com,admin,',
+      'Bob Wilson,bob@example.com,viewer,Standard Users'
+    ].join('\n');
+    
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'user_import_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleImportUsers = async () => {
     if (!importFile) return;
     
