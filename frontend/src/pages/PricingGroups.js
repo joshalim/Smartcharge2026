@@ -618,32 +618,20 @@ function PricingGroups() {
                     <Users className="w-4 h-4 text-purple-600" />
                     In Group ({filteredGroupUsers.length})
                   </h4>
-                  <div
+                  <DroppableZone
                     id="group-users-drop"
-                    className={`flex-1 overflow-y-auto p-3 rounded-lg border-2 border-dashed transition-colors min-h-[200px] ${
-                      activeId && !activeUser?.pricing_group_id
-                        ? 'border-purple-400 bg-purple-50/50 dark:bg-purple-950/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'
-                    }`}
-                    data-testid="group-users-panel"
+                    isOver={activeId && !groupUsers.find(u => u.id === activeId)}
+                    emptyMessage={searchTerm ? 'No matching users in group' : 'Drop users here to add to group'}
                   >
-                    {filteredGroupUsers.length > 0 ? (
-                      <div className="space-y-2">
-                        {filteredGroupUsers.map((user) => (
-                          <DraggableUserCard
-                            key={user.id}
-                            user={user}
-                            isInGroup={true}
-                            onAction={removeUser}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-sm text-slate-500 dark:text-slate-400">
-                        {searchTerm ? 'No matching users in group' : 'Drop users here to add to group'}
-                      </div>
-                    )}
-                  </div>
+                    {filteredGroupUsers.length > 0 && filteredGroupUsers.map((user) => (
+                      <DraggableUserCard
+                        key={user.id}
+                        user={user}
+                        isInGroup={true}
+                        onAction={() => removeUser(user.id)}
+                      />
+                    ))}
+                  </DroppableZone>
                 </div>
                 
                 {/* Available Users */}
@@ -652,32 +640,20 @@ function PricingGroups() {
                     <UserPlus className="w-4 h-4 text-emerald-600" />
                     Available ({filteredAvailableUsers.length})
                   </h4>
-                  <div
+                  <DroppableZone
                     id="available-users-drop"
-                    className={`flex-1 overflow-y-auto p-3 rounded-lg border-2 border-dashed transition-colors min-h-[200px] ${
-                      activeId && activeUser?.pricing_group_id
-                        ? 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20'
-                        : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'
-                    }`}
-                    data-testid="available-users-panel"
+                    isOver={activeId && groupUsers.find(u => u.id === activeId)}
+                    emptyMessage={searchTerm ? 'No matching available users' : 'All users are assigned to groups'}
                   >
-                    {filteredAvailableUsers.length > 0 ? (
-                      <div className="space-y-2">
-                        {filteredAvailableUsers.map((user) => (
-                          <DraggableUserCard
-                            key={user.id}
-                            user={user}
-                            isInGroup={false}
-                            onAction={() => assignUser(user.id)}
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-sm text-slate-500 dark:text-slate-400">
-                        {searchTerm ? 'No matching available users' : 'All users are assigned to groups'}
-                      </div>
-                    )}
-                  </div>
+                    {filteredAvailableUsers.length > 0 && filteredAvailableUsers.map((user) => (
+                      <DraggableUserCard
+                        key={user.id}
+                        user={user}
+                        isInGroup={false}
+                        onAction={() => assignUser(user.id)}
+                      />
+                    ))}
+                  </DroppableZone>
                 </div>
               </div>
 
