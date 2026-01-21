@@ -952,7 +952,7 @@ async def topup_rfid_card(
     topup: RFIDTopUp,
     current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
-    """Add balance to RFID card"""
+    """Add balance to RFID card (manual top-up by admin)"""
     if topup.amount <= 0:
         raise HTTPException(status_code=400, detail="Top-up amount must be positive")
     
@@ -960,12 +960,28 @@ async def topup_rfid_card(
     if not existing:
         raise HTTPException(status_code=404, detail="RFID card not found")
     
-    new_balance = existing.get("balance", 0) + topup.amount
+    old_balance = existing.get("balance", 0)
+    new_balance = old_balance + topup.amount
     
     await db.rfid_cards.update_one(
         {"id": card_id},
         {"$set": {"balance": new_balance}}
     )
+    
+    # Log history
+    history_record = {
+        "id": str(uuid.uuid4()),
+        "card_id": card_id,
+        "card_number": existing.get("card_number"),
+        "type": "topup",
+        "amount": topup.amount,
+        "balance_before": old_balance,
+        "balance_after": new_balance,
+        "description": f"Manual Top-Up by {current_user.email}",
+        "reference_id": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.rfid_history.insert_one(history_record)
     
     existing["balance"] = new_balance
     
