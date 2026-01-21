@@ -1553,12 +1553,15 @@ async def set_invoice_webhook_config(
     
     if existing:
         await db.invoice_webhook_config.update_one({}, {"$set": config_data})
+        config_data["id"] = existing.get("id", str(uuid.uuid4()))
+        config_data["created_at"] = existing.get("created_at")
     else:
         config_data["id"] = str(uuid.uuid4())
         config_data["created_at"] = datetime.now(timezone.utc).isoformat()
         await db.invoice_webhook_config.insert_one(config_data)
     
-    return {"message": "Webhook configuration saved", **config_data}
+    # Return without _id
+    return {k: v for k, v in config_data.items() if k != "_id"}
 
 @api_router.get("/invoice-webhook/logs")
 async def get_invoice_webhook_logs(
