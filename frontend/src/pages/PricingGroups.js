@@ -10,6 +10,7 @@ import {
   useSensor,
   useSensors,
   DragOverlay,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   useSortable,
@@ -17,6 +18,31 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Droppable Zone Component
+function DroppableZone({ id, children, isOver, isEmpty, emptyMessage }) {
+  const { setNodeRef } = useDroppable({ id });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex-1 overflow-y-auto p-3 rounded-lg border-2 border-dashed transition-colors min-h-[200px] ${
+        isOver
+          ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-950/20'
+          : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50'
+      }`}
+      data-testid={`${id}-panel`}
+    >
+      {children ? (
+        <div className="space-y-2">{children}</div>
+      ) : (
+        <div className="flex items-center justify-center h-full text-sm text-slate-500 dark:text-slate-400">
+          {emptyMessage}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Draggable User Card Component
 function DraggableUserCard({ user, isInGroup, onAction }) {
