@@ -14,6 +14,12 @@ import bcrypt
 import jwt
 import pandas as pd
 import openpyxl
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.units import inch
+from fastapi.responses import StreamingResponse
 from io import BytesIO
 
 ROOT_DIR = Path(__file__).parent
