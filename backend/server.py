@@ -1512,6 +1512,16 @@ async def remote_stop_transaction(
                 reference_id=str(request.transaction_id)
             )
             rfid_deducted = True
+            
+            # Check if balance fell below threshold and send notification
+            threshold = rfid_card.get("low_balance_threshold", 10000)
+            if new_balance < threshold and old_balance >= threshold:
+                # Get user info for email
+                user = await db.users.find_one({"id": rfid_card.get("user_id")}, {"_id": 0})
+                if user and user.get("email"):
+                    # Update card with new balance for email
+                    rfid_card["balance"] = new_balance
+                    await send_low_balance_email(rfid_card, user["email"], user.get("name", "User"))
     
     await db.ocpp_transactions.update_one(
         {"transaction_id": request.transaction_id},
