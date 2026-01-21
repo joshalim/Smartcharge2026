@@ -55,11 +55,11 @@ function Login() {
         </button>
 
         <div className="w-full max-w-md">
-          <div className="mb-8">
+          <div className="mb-8 text-center">
             <img 
               src="https://customer-assets.emergentagent.com/job_evbill-manager/artifacts/snbut79m_smart-charge-high-resolution-logo%20mini%20sw.png" 
               alt="Smart Charge" 
-              className="h-12 mb-4"
+              className="h-16 mb-6 mx-auto"
             />
             <p className="text-slate-500 dark:text-slate-400">
               {isLogin ? t('auth.signin') : t('auth.signup')}
