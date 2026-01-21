@@ -148,7 +148,8 @@ function Users() {
       card_number: '',
       user_id: users.length > 0 ? users[0].id : '',
       balance: 0,
-      status: 'active'
+      status: 'active',
+      low_balance_threshold: 10000
     });
     setShowCardModal(true);
   };
@@ -159,7 +160,8 @@ function Users() {
       card_number: card.card_number,
       user_id: card.user_id,
       balance: card.balance,
-      status: card.status
+      status: card.status,
+      low_balance_threshold: card.low_balance_threshold || 10000
     });
     setShowCardModal(true);
   };
@@ -170,7 +172,8 @@ function Users() {
       if (editingCard) {
         await axios.patch(`${API}/rfid-cards/${editingCard.id}`, {
           card_number: cardForm.card_number,
-          status: cardForm.status
+          status: cardForm.status,
+          low_balance_threshold: cardForm.low_balance_threshold
         });
       } else {
         await axios.post(`${API}/rfid-cards`, cardForm);
