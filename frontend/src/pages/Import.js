@@ -174,7 +174,7 @@ function Import() {
           {t('import.requiredColumns')}
         </p>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {['TxID', 'Station', 'Connector', 'Account', 'Start time', 'End Time', 'Meter value(kW.h)'].map((col) => (
+          {['TxID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter value(kW.h)'].map((col) => (
             <div key={col} className="px-3 py-2 bg-white dark:bg-slate-800 rounded-md border border-slate-200 dark:border-slate-700">
               <code className="text-sm font-medium text-orange-600 dark:text-orange-400">{col}</code>
             </div>
