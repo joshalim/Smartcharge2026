@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
 import Import from './pages/Import';
 import Users from './pages/Users';
+import Pricing from './pages/Pricing';
 import Layout from './components/Layout';
 import './App.css';
 
