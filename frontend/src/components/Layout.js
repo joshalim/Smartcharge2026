@@ -16,6 +16,7 @@ function Layout() {
     { name: t('nav.import'), href: '/import', icon: Upload, roles: ['admin', 'user'] },
     { name: t('nav.chargers'), href: '/chargers', icon: Battery, roles: ['admin'] },
     { name: t('nav.pricing'), href: '/pricing', icon: DollarSign, roles: ['admin'] },
+    { name: t('nav.pricingGroups'), href: '/pricing-groups', icon: UsersRound, roles: ['admin'] },
     { name: t('nav.reports'), href: '/reports', icon: BarChart3, roles: ['admin', 'user'] },
     { name: 'OCPP', href: '/ocpp', icon: Activity, roles: ['admin', 'user'] },
     { name: t('nav.users'), href: '/users', icon: Users, roles: ['admin'] },
