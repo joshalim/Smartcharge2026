@@ -485,7 +485,7 @@ async def import_transactions(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {str(e)}")
     
-    required_columns = ['TxID', 'Station', 'Connector', 'Account', 'Start time', 'End Time', 'Meter value(kW.h)']
+    required_columns = ['TxID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter value(kW.h)']
     missing_columns = [col for col in required_columns if col not in df.columns]
     
     if missing_columns:
