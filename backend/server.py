@@ -19,23 +19,27 @@ from io import BytesIO
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 
 security = HTTPBearer()
 
-# Create the main app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# Models
+# Special pricing groups
+SPECIAL_ACCOUNTS = ["PORTERIA", "Jorge Iluminacion", "John Iluminacion"]
+CONNECTOR_TYPE_PRICING = {
+    "CCS2": 2500.0,
+    "CHADEMO": 2000.0,
+    "J1772": 1500.0
+}
+
 class UserRole:
     ADMIN = "admin"
     USER = "user"
@@ -83,34 +87,49 @@ class Transaction(BaseModel):
     tx_id: str
     station: str
     connector: str
+    connector_type: Optional[str] = None
     account: str
     start_time: str
     end_time: str
     meter_value: float
+    charging_duration: Optional[str] = None
     cost: float
+    payment_status: str = "UNPAID"
+    payment_type: Optional[str] = None
+    payment_date: Optional[str] = None
     created_at: str
 
 class TransactionCreate(BaseModel):
     tx_id: str
     station: str
     connector: str
+    connector_type: Optional[str] = None
     account: str
     start_time: str
     end_time: str
     meter_value: float
 
-class TransactionFilter(BaseModel):
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+class TransactionUpdate(BaseModel):
     station: Optional[str] = None
+    connector: Optional[str] = None
+    connector_type: Optional[str] = None
     account: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    meter_value: Optional[float] = None
+    payment_status: Optional[str] = None
+    payment_type: Optional[str] = None
+    payment_date: Optional[str] = None
 
 class DashboardStats(BaseModel):
     total_transactions: int
     total_energy: float
     total_revenue: float
+    paid_revenue: float
+    unpaid_revenue: float
     active_stations: int
     unique_accounts: int
+    payment_breakdown: dict
     recent_transactions: List[Transaction]
 
 class ImportValidationError(BaseModel):
@@ -124,7 +143,24 @@ class ImportResult(BaseModel):
     skipped_count: int
     errors: List[ImportValidationError]
 
-# Helper Functions
+class OCPPBootNotification(BaseModel):
+    chargePointVendor: str
+    chargePointModel: str
+    chargePointSerialNumber: Optional[str] = None
+    firmwareVersion: Optional[str] = None
+
+class OCPPStartTransaction(BaseModel):
+    connectorId: int
+    idTag: str
+    meterStart: int
+    timestamp: str
+
+class OCPPStopTransaction(BaseModel):
+    transactionId: int
+    idTag: str
+    meterStop: int
+    timestamp: str
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
@@ -161,16 +197,39 @@ def require_role(*allowed_roles: str):
         return current_user
     return role_checker
 
-async def get_pricing(account: str, connector: str) -> float:
-    """Get price per kWh for account/connector combination"""
+def calculate_charging_duration(start_time: str, end_time: str) -> str:
+    """Calculate duration between start and end times"""
+    try:
+        start = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+        end = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+        duration = end - start
+        hours = duration.seconds // 3600
+        minutes = (duration.seconds % 3600) // 60
+        return f"{hours}h {minutes}m"
+    except:
+        return "N/A"
+
+async def get_pricing(account: str, connector: str, connector_type: Optional[str] = None) -> float:
+    """Get price per kWh based on account and connector"""
+    # Check if account is in special group
+    if account in SPECIAL_ACCOUNTS:
+        # Use connector type pricing
+        if connector_type and connector_type in CONNECTOR_TYPE_PRICING:
+            return CONNECTOR_TYPE_PRICING[connector_type]
+        # Fallback to default if connector type not specified
+        return 500.0
+    
+    # For other accounts, use custom pricing from database
     pricing = await db.pricing.find_one({"account": account, "connector": connector}, {"_id": 0})
     if pricing:
         return pricing['price_per_kwh']
-    # Default pricing if not found
+    
+    # Check for default pricing
     default_pricing = await db.pricing.find_one({"account": account, "connector": "default"}, {"_id": 0})
     if default_pricing:
         return default_pricing['price_per_kwh']
-    return 500.0  # Default COP per kWh
+    
+    return 500.0
 
 # Auth Routes
 @api_router.post("/auth/register", response_model=User)
@@ -222,14 +281,12 @@ async def create_pricing_rule(
     pricing_data: PricingRuleCreate,
     current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
-    # Check if rule exists
     existing = await db.pricing.find_one({
         "account": pricing_data.account,
         "connector": pricing_data.connector
     })
     
     if existing:
-        # Update existing
         await db.pricing.update_one(
             {"account": pricing_data.account, "connector": pricing_data.connector},
             {"$set": {"price_per_kwh": pricing_data.price_per_kwh}}
@@ -262,14 +319,18 @@ async def create_transaction(
     transaction_data: TransactionCreate,
     current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
 ):
-    # Calculate cost
-    price_per_kwh = await get_pricing(transaction_data.account, transaction_data.connector)
+    price_per_kwh = await get_pricing(transaction_data.account, transaction_data.connector, transaction_data.connector_type)
     cost = transaction_data.meter_value * price_per_kwh
+    charging_duration = calculate_charging_duration(transaction_data.start_time, transaction_data.end_time)
     
     transaction = {
         "id": str(uuid.uuid4()),
         **transaction_data.model_dump(),
+        "charging_duration": charging_duration,
         "cost": round(cost, 2),
+        "payment_status": "UNPAID",
+        "payment_type": None,
+        "payment_date": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     
@@ -282,6 +343,7 @@ async def get_transactions(
     end_date: Optional[str] = None,
     station: Optional[str] = None,
     account: Optional[str] = None,
+    payment_status: Optional[str] = None,
     skip: int = 0,
     limit: int = 100,
     current_user: User = Depends(get_current_user)
@@ -299,9 +361,45 @@ async def get_transactions(
         query["station"] = station
     if account:
         query["account"] = account
+    if payment_status:
+        query["payment_status"] = payment_status
     
     transactions = await db.transactions.find(query, {"_id": 0}).sort("start_time", -1).skip(skip).limit(limit).to_list(limit)
     return [Transaction(**t) for t in transactions]
+
+@api_router.patch("/transactions/{transaction_id}", response_model=Transaction)
+async def update_transaction(
+    transaction_id: str,
+    update_data: TransactionUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN, UserRole.USER))
+):
+    existing = await db.transactions.find_one({"id": transaction_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    # Recalculate cost if meter_value, account, or connector changed
+    if "meter_value" in update_dict or "account" in update_dict or "connector" in update_dict or "connector_type" in update_dict:
+        meter_value = update_dict.get("meter_value", existing["meter_value"])
+        account = update_dict.get("account", existing["account"])
+        connector = update_dict.get("connector", existing["connector"])
+        connector_type = update_dict.get("connector_type", existing.get("connector_type"))
+        
+        price_per_kwh = await get_pricing(account, connector, connector_type)
+        update_dict["cost"] = round(meter_value * price_per_kwh, 2)
+    
+    # Recalculate duration if times changed
+    if "start_time" in update_dict or "end_time" in update_dict:
+        start_time = update_dict.get("start_time", existing["start_time"])
+        end_time = update_dict.get("end_time", existing["end_time"])
+        update_dict["charging_duration"] = calculate_charging_duration(start_time, end_time)
+    
+    if update_dict:
+        await db.transactions.update_one({"id": transaction_id}, {"$set": update_dict})
+        existing.update(update_dict)
+    
+    return Transaction(**existing)
 
 @api_router.delete("/transactions/{transaction_id}")
 async def delete_transaction(
@@ -328,14 +426,13 @@ async def import_transactions(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {str(e)}")
     
-    # Validate required columns
     required_columns = ['TxID', 'Station', 'Connector', 'Account', 'Start time', 'End Time', 'Meter value(kW.h)']
     missing_columns = [col for col in required_columns if col not in df.columns]
     
     if missing_columns:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing required columns: {', '.join(missing_columns)}. Expected columns: {', '.join(required_columns)}"
+            detail=f"Missing required columns: {', '.join(missing_columns)}"
         )
     
     errors = []
@@ -345,7 +442,6 @@ async def import_transactions(
     for idx, row in df.iterrows():
         row_num = idx + 2
         
-        # Validate meter value
         try:
             meter_value = float(row['Meter value(kW.h)'])
         except (ValueError, TypeError):
@@ -356,12 +452,10 @@ async def import_transactions(
             ))
             continue
         
-        # Skip 0 values
         if meter_value == 0:
             skipped += 1
             continue
         
-        # Validate required fields
         if pd.isna(row['TxID']) or str(row['TxID']).strip() == '':
             errors.append(ImportValidationError(
                 row=row_num,
@@ -370,37 +464,37 @@ async def import_transactions(
             ))
             continue
         
-        if pd.isna(row['Station']) or str(row['Station']).strip() == '':
-            errors.append(ImportValidationError(
-                row=row_num,
-                field="Station",
-                message="Station is required"
-            ))
-            continue
-        
-        # Check if transaction already exists
         existing = await db.transactions.find_one({"tx_id": str(row['TxID'])})
         if existing:
             skipped += 1
             continue
         
-        # Get pricing and calculate cost
         account = str(row['Account']) if not pd.isna(row['Account']) else ""
         connector = str(row['Connector']) if not pd.isna(row['Connector']) else ""
-        price_per_kwh = await get_pricing(account, connector)
+        connector_type = str(row.get('Connector Type', '')) if 'Connector Type' in df.columns and not pd.isna(row.get('Connector Type')) else None
+        
+        price_per_kwh = await get_pricing(account, connector, connector_type)
         cost = meter_value * price_per_kwh
         
-        # Create transaction
+        start_time = str(row['Start time']) if not pd.isna(row['Start time']) else ""
+        end_time = str(row['End Time']) if not pd.isna(row['End Time']) else ""
+        charging_duration = calculate_charging_duration(start_time, end_time)
+        
         transaction = {
             "id": str(uuid.uuid4()),
             "tx_id": str(row['TxID']),
             "station": str(row['Station']),
             "connector": connector,
+            "connector_type": connector_type,
             "account": account,
-            "start_time": str(row['Start time']) if not pd.isna(row['Start time']) else "",
-            "end_time": str(row['End Time']) if not pd.isna(row['End Time']) else "",
+            "start_time": start_time,
+            "end_time": end_time,
             "meter_value": meter_value,
+            "charging_duration": charging_duration,
             "cost": round(cost, 2),
+            "payment_status": "UNPAID",
+            "payment_type": None,
+            "payment_date": None,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         
@@ -419,7 +513,6 @@ async def import_transactions(
 async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
     total_transactions = await db.transactions.count_documents({})
     
-    # Calculate total energy and revenue
     pipeline = [
         {"$group": {
             "_id": None,
@@ -431,15 +524,23 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
     total_energy = result[0]["total_energy"] if result else 0
     total_revenue = result[0]["total_revenue"] if result else 0
     
-    # Count unique stations
+    # Calculate paid vs unpaid revenue
+    paid_pipeline = [{"$match": {"payment_status": "PAID"}}, {"$group": {"_id": None, "paid_revenue": {"$sum": "$cost"}}}]
+    paid_result = await db.transactions.aggregate(paid_pipeline).to_list(1)
+    paid_revenue = paid_result[0]["paid_revenue"] if paid_result else 0
+    unpaid_revenue = total_revenue - paid_revenue
+    
+    # Payment breakdown
+    payment_pipeline = [{"$match": {"payment_status": "PAID"}}, {"$group": {"_id": "$payment_type", "count": {"$sum": 1}, "amount": {"$sum": "$cost"}}}]
+    payment_results = await db.transactions.aggregate(payment_pipeline).to_list(10)
+    payment_breakdown = {item["_id"]: {"count": item["count"], "amount": item["amount"]} for item in payment_results if item["_id"]}
+    
     stations = await db.transactions.distinct("station")
     active_stations = len(stations)
     
-    # Count unique accounts
     accounts = await db.transactions.distinct("account")
     unique_accounts = len(accounts)
     
-    # Get recent transactions
     recent = await db.transactions.find({}, {"_id": 0}).sort("start_time", -1).limit(5).to_list(5)
     recent_transactions = [Transaction(**t) for t in recent]
     
@@ -447,12 +548,15 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
         total_transactions=total_transactions,
         total_energy=round(total_energy, 2),
         total_revenue=round(total_revenue, 2),
+        paid_revenue=round(paid_revenue, 2),
+        unpaid_revenue=round(unpaid_revenue, 2),
         active_stations=active_stations,
         unique_accounts=unique_accounts,
+        payment_breakdown=payment_breakdown,
         recent_transactions=recent_transactions
     )
 
-# User Management (Admin only)
+# User Management
 @api_router.get("/users", response_model=List[User])
 async def get_users(current_user: User = Depends(require_role(UserRole.ADMIN))):
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(100)
@@ -485,7 +589,7 @@ async def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Role updated successfully"}
 
-# Get unique stations and accounts for filters
+# Filters
 @api_router.get("/filters/stations")
 async def get_stations(current_user: User = Depends(get_current_user)):
     stations = await db.transactions.distinct("station")
@@ -496,7 +600,81 @@ async def get_accounts(current_user: User = Depends(get_current_user)):
     accounts = await db.transactions.distinct("account")
     return sorted([a for a in accounts if a])
 
-# Include router
+# OCPP 1.6 Endpoints
+@api_router.post("/ocpp/boot-notification")
+async def ocpp_boot_notification(data: OCPPBootNotification):
+    """OCPP 1.6 BootNotification"""
+    boot_record = {
+        "id": str(uuid.uuid4()),
+        "vendor": data.chargePointVendor,
+        "model": data.chargePointModel,
+        "serial": data.chargePointSerialNumber,
+        "firmware": data.firmwareVersion,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "status": "Accepted"
+    }
+    await db.ocpp_boots.insert_one(boot_record)
+    
+    return {
+        "status": "Accepted",
+        "currentTime": datetime.now(timezone.utc).isoformat(),
+        "interval": 300
+    }
+
+@api_router.post("/ocpp/heartbeat")
+async def ocpp_heartbeat():
+    """OCPP 1.6 Heartbeat"""
+    return {"currentTime": datetime.now(timezone.utc).isoformat()}
+
+@api_router.post("/ocpp/start-transaction")
+async def ocpp_start_transaction(data: OCPPStartTransaction):
+    """OCPP 1.6 StartTransaction"""
+    transaction_id = abs(hash(data.idTag + data.timestamp)) % (10 ** 8)
+    
+    ocpp_transaction = {
+        "transaction_id": transaction_id,
+        "connector_id": data.connectorId,
+        "id_tag": data.idTag,
+        "meter_start": data.meterStart,
+        "start_timestamp": data.timestamp,
+        "status": "active"
+    }
+    await db.ocpp_transactions.insert_one(ocpp_transaction)
+    
+    return {"transactionId": transaction_id}
+
+@api_router.post("/ocpp/stop-transaction")
+async def ocpp_stop_transaction(data: OCPPStopTransaction):
+    """OCPP 1.6 StopTransaction"""
+    ocpp_tx = await db.ocpp_transactions.find_one({"transaction_id": data.transactionId})
+    
+    if ocpp_tx:
+        energy_consumed = (data.meterStop - ocpp_tx["meter_start"]) / 1000.0
+        
+        await db.ocpp_transactions.update_one(
+            {"transaction_id": data.transactionId},
+            {"$set": {
+                "meter_stop": data.meterStop,
+                "stop_timestamp": data.timestamp,
+                "energy_consumed": energy_consumed,
+                "status": "completed"
+            }}
+        )
+    
+    return {"status": "Accepted"}
+
+@api_router.get("/ocpp/status")
+async def get_ocpp_status(current_user: User = Depends(get_current_user)):
+    """Get OCPP connection status"""
+    active_transactions = await db.ocpp_transactions.count_documents({"status": "active"})
+    total_boots = await db.ocpp_boots.count_documents({})
+    
+    return {
+        "active_transactions": active_transactions,
+        "total_boots": total_boots,
+        "ocpp_version": "1.6"
+    }
+
 app.include_router(api_router)
 
 app.add_middleware(
