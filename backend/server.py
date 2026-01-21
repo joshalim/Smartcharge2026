@@ -80,6 +80,7 @@ class User(BaseModel):
     email: str
     name: str
     role: str
+    pricing_group_id: Optional[str] = None
     created_at: str
 
 class TokenResponse(BaseModel):
