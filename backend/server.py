@@ -1078,6 +1078,138 @@ async def create_user(
     
     return User(**{k: v for k, v in new_user.items() if k not in ['_id', 'password_hash']})
 
+# User Import Models
+class UserImportResult(BaseModel):
+    imported: int
+    skipped: int
+    errors: List[dict]
+
+@api_router.post("/users/import", response_model=UserImportResult)
+async def import_users(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Import users from Excel/CSV file (Admin only)
+    
+    Required columns: Name, Email, Role (optional, defaults to 'user')
+    Optional columns: Password (if not provided, a default password will be generated)
+    """
+    if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+        raise HTTPException(status_code=400, detail="File must be Excel (.xlsx, .xls) or CSV (.csv)")
+    
+    try:
+        contents = await file.read()
+        if file.filename.endswith('.csv'):
+            import io
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
+    
+    # Create case-insensitive column mapping
+    df_columns_lower = {col.lower().strip(): col for col in df.columns}
+    
+    # Map columns
+    name_col = None
+    email_col = None
+    role_col = None
+    password_col = None
+    group_col = None
+    
+    for col_lower, col_orig in df_columns_lower.items():
+        if col_lower in ['name', 'nombre', 'full name', 'fullname']:
+            name_col = col_orig
+        elif col_lower in ['email', 'correo', 'e-mail', 'email address']:
+            email_col = col_orig
+        elif col_lower in ['role', 'rol', 'user role']:
+            role_col = col_orig
+        elif col_lower in ['password', 'contraseña', 'pass']:
+            password_col = col_orig
+        elif col_lower in ['group', 'grupo', 'pricing group', 'pricing_group']:
+            group_col = col_orig
+    
+    if not name_col:
+        raise HTTPException(status_code=400, detail="Missing required column: Name")
+    if not email_col:
+        raise HTTPException(status_code=400, detail="Missing required column: Email")
+    
+    # Get all pricing groups for mapping
+    pricing_groups = {}
+    async for group in db.pricing_groups.find({}, {"_id": 0}):
+        pricing_groups[group["name"].lower()] = group["id"]
+    
+    imported = 0
+    skipped = 0
+    errors = []
+    default_password = "ChangeMeNow123!"
+    
+    for idx, row in df.iterrows():
+        row_num = idx + 2  # Excel rows start at 1, header is row 1
+        
+        name = str(row[name_col]).strip() if not pd.isna(row[name_col]) else ""
+        email = str(row[email_col]).strip().lower() if not pd.isna(row[email_col]) else ""
+        
+        if not name:
+            errors.append({"row": row_num, "field": "Name", "message": "Name is required"})
+            continue
+        
+        if not email or '@' not in email:
+            errors.append({"row": row_num, "field": "Email", "message": "Valid email is required"})
+            continue
+        
+        # Check for existing user
+        existing = await db.users.find_one({"email": email})
+        if existing:
+            skipped += 1
+            continue
+        
+        # Get role
+        role = "user"
+        if role_col and not pd.isna(row.get(role_col)):
+            role_value = str(row[role_col]).strip().lower()
+            if role_value in ['admin', 'administrador']:
+                role = "admin"
+            elif role_value in ['viewer', 'visor', 'view']:
+                role = "viewer"
+            else:
+                role = "user"
+        
+        # Get password
+        password = default_password
+        if password_col and not pd.isna(row.get(password_col)):
+            password = str(row[password_col]).strip()
+            if len(password) < 6:
+                password = default_password
+        
+        # Create password hash
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        # Get pricing group
+        pricing_group_id = None
+        if group_col and not pd.isna(row.get(group_col)):
+            group_name = str(row[group_col]).strip().lower()
+            if group_name in pricing_groups:
+                pricing_group_id = pricing_groups[group_name]
+        
+        new_user = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "email": email,
+            "password_hash": password_hash,
+            "role": role,
+            "pricing_group_id": pricing_group_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        
+        try:
+            await db.users.insert_one(new_user)
+            imported += 1
+        except Exception as e:
+            errors.append({"row": row_num, "field": "Database", "message": str(e)})
+    
+    return UserImportResult(imported=imported, skipped=skipped, errors=errors)
+
 @api_router.patch("/users/{user_id}", response_model=User)
 async def update_user(
     user_id: str,
