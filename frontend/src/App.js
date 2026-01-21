@@ -10,6 +10,7 @@ import Pricing from './pages/Pricing';
 import OCPP from './pages/OCPP';
 import Chargers from './pages/Chargers';
 import Reports from './pages/Reports';
+import Settings from './pages/Settings';
 import Layout from './components/Layout';
 import './App.css';
 
