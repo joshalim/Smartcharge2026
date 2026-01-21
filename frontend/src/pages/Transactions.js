@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { Search, Filter, X, Download, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { formatCOP, formatNumber } from '../utils/currency';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function Transactions() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +78,7 @@ function Transactions() {
   };
 
   const deleteTransaction = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+    if (!window.confirm(t('transactions.deleteConfirm'))) return;
 
     try {
       await axios.delete(`${API}/transactions/${id}`);
@@ -87,7 +90,7 @@ function Transactions() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Tx ID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter Value (kWh)'];
+    const headers = ['Tx ID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Energy (kWh)', 'Cost (COP)'];
     const rows = transactions.map((tx) => [
       tx.tx_id,
       tx.station,
@@ -96,6 +99,7 @@ function Transactions() {
       tx.start_time,
       tx.end_time,
       tx.meter_value,
+      tx.cost,
     ]);
 
     const csvContent =
@@ -114,9 +118,9 @@ function Transactions() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2" style={{ fontFamily: 'Chivo, sans-serif' }} data-testid="transactions-title">
-            Transactions
+            {t('transactions.title')}
           </h1>
-          <p className="text-slate-500 dark:text-slate-400">View and manage EV charging transactions</p>
+          <p className="text-slate-500 dark:text-slate-400">{t('transactions.subtitle')}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -125,9 +129,9 @@ function Transactions() {
             data-testid="toggle-filters-btn"
           >
             <Filter className="w-4 h-4" />
-            Filters
+            {t('transactions.filters')}
             {activeFiltersCount > 0 && (
-              <span className="ml-1 px-2 py-0.5 text-xs bg-indigo-600 text-white rounded-full">
+              <span className="ml-1 px-2 py-0.5 text-xs bg-orange-600 text-white rounded-full">
                 {activeFiltersCount}
               </span>
             )}
@@ -135,51 +139,50 @@ function Transactions() {
           <button
             onClick={exportToCSV}
             disabled={transactions.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             data-testid="export-csv-btn"
           >
             <Download className="w-4 h-4" />
-            Export
+            {t('transactions.export')}
           </button>
         </div>
       </div>
 
-      {/* Filters Panel */}
       {showFilters && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6" data-testid="filters-panel">
           <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
-            Filter Transactions
+            {t('transactions.filterTitle')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-2">Start Date</label>
+              <label className="block text-sm font-medium mb-2">{t('transactions.startDate')}</label>
               <input
                 type="date"
                 value={filters.startDate}
                 onChange={(e) => handleFilterChange('startDate', e.target.value)}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 data-testid="filter-start-date"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">End Date</label>
+              <label className="block text-sm font-medium mb-2">{t('transactions.endDate')}</label>
               <input
                 type="date"
                 value={filters.endDate}
                 onChange={(e) => handleFilterChange('endDate', e.target.value)}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 data-testid="filter-end-date"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Station</label>
+              <label className="block text-sm font-medium mb-2">{t('transactions.station')}</label>
               <select
                 value={filters.station}
                 onChange={(e) => handleFilterChange('station', e.target.value)}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 data-testid="filter-station"
               >
-                <option value="">All Stations</option>
+                <option value="">{t('transactions.allStations')}</option>
                 {stations.map((station) => (
                   <option key={station} value={station}>
                     {station}
@@ -188,14 +191,14 @@ function Transactions() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2">Account</label>
+              <label className="block text-sm font-medium mb-2">{t('transactions.account')}</label>
               <select
                 value={filters.account}
                 onChange={(e) => handleFilterChange('account', e.target.value)}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 data-testid="filter-account"
               >
-                <option value="">All Accounts</option>
+                <option value="">{t('transactions.allAccounts')}</option>
                 {accounts.map((account) => (
                   <option key={account} value={account}>
                     {account}
@@ -207,42 +210,42 @@ function Transactions() {
           <div className="flex gap-2">
             <button
               onClick={applyFilters}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors font-medium"
+              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium"
               data-testid="apply-filters-btn"
             >
-              Apply Filters
+              {t('transactions.applyFilters')}
             </button>
             <button
               onClick={clearFilters}
               className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
               data-testid="clear-filters-btn"
             >
-              Clear
+              {t('transactions.clearFilters')}
             </button>
           </div>
         </div>
       )}
 
-      {/* Transactions Table */}
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-12" data-testid="transactions-loading">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : transactions.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full" data-testid="transactions-table">
               <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Tx ID</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Station</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Connector</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Account</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Start Time</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">End Time</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Energy (kWh)</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.txId')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.station')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.connector')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.account')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.startTime')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.endTime')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.energy')}</th>
+                  <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.cost')}</th>
                   {user?.role === 'admin' && (
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">Actions</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700 dark:text-slate-300">{t('transactions.actions')}</th>
                   )}
                 </tr>
               </thead>
@@ -260,7 +263,10 @@ function Transactions() {
                     <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400">{tx.start_time}</td>
                     <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400">{tx.end_time}</td>
                     <td className="py-4 px-6 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                      {tx.meter_value.toFixed(2)}
+                      {formatNumber(tx.meter_value)}
+                    </td>
+                    <td className="py-4 px-6 text-sm font-semibold text-orange-600 dark:text-orange-400">
+                      {formatCOP(tx.cost)}
                     </td>
                     {user?.role === 'admin' && (
                       <td className="py-4 px-6">
@@ -280,8 +286,8 @@ function Transactions() {
           </div>
         ) : (
           <div className="text-center py-12" data-testid="no-transactions">
-            <p className="text-slate-500 dark:text-slate-400 mb-4">No transactions found</p>
-            <p className="text-sm text-slate-400 dark:text-slate-500">Import data or adjust your filters</p>
+            <p className="text-slate-500 dark:text-slate-400 mb-4">{t('transactions.noTransactions')}</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">{t('transactions.adjustFilters')}</p>
           </div>
         )}
       </div>
