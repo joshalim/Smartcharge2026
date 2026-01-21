@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe, Activity, Battery, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe, Activity, Battery, BarChart3, Settings } from 'lucide-react';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -19,6 +19,7 @@ function Layout() {
     { name: t('nav.reports'), href: '/reports', icon: BarChart3, roles: ['admin', 'user'] },
     { name: 'OCPP', href: '/ocpp', icon: Activity, roles: ['admin', 'user'] },
     { name: t('nav.users'), href: '/users', icon: Users, roles: ['admin'] },
+    { name: t('nav.settings'), href: '/settings', icon: Settings, roles: ['admin'] },
   ];
 
   const filteredNav = navigation.filter(item => item.roles.includes(user?.role));
