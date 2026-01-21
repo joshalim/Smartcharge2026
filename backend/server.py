@@ -226,6 +226,31 @@ class ReportData(BaseModel):
     by_payment_type: List[dict]
     transactions: List[Transaction]
 
+# RFID Card Models
+class RFIDCard(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str
+    card_number: str
+    user_id: str
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    balance: float
+    status: str  # active, inactive, blocked
+    created_at: str
+
+class RFIDCardCreate(BaseModel):
+    card_number: str
+    user_id: str
+    balance: float = 0.0
+    status: str = "active"
+
+class RFIDCardUpdate(BaseModel):
+    card_number: Optional[str] = None
+    status: Optional[str] = None
+
+class RFIDTopUp(BaseModel):
+    amount: float
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
