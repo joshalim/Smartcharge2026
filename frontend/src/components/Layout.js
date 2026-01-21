@@ -15,6 +15,7 @@ function Layout() {
     { name: t('nav.transactions'), href: '/transactions', icon: Zap, roles: ['admin', 'user', 'viewer'] },
     { name: t('nav.import'), href: '/import', icon: Upload, roles: ['admin', 'user'] },
     { name: t('nav.pricing'), href: '/pricing', icon: DollarSign, roles: ['admin'] },
+    { name: 'OCPP', href: '/ocpp', icon: Activity, roles: ['admin', 'user'] },
     { name: t('nav.users'), href: '/users', icon: Users, roles: ['admin'] },
   ];
 
