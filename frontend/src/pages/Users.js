@@ -1039,6 +1039,156 @@ function Users() {
           </div>
         </div>
       )}
+
+      {/* Import Users Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50" onClick={() => setShowImportModal(false)}>
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 max-w-lg w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>
+                Import Users
+              </h3>
+              <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded" data-testid="close-import-modal">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {/* File Upload Area */}
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                importFile 
+                  ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' 
+                  : 'border-slate-300 dark:border-slate-700 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-950/20'
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+              data-testid="import-dropzone"
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                data-testid="import-file-input"
+              />
+              {importFile ? (
+                <div className="flex flex-col items-center gap-2">
+                  <FileSpreadsheet className="w-12 h-12 text-emerald-600 dark:text-emerald-400" />
+                  <p className="font-medium text-slate-900 dark:text-slate-100">{importFile.name}</p>
+                  <p className="text-sm text-slate-500">Click to change file</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-2">
+                  <Upload className="w-12 h-12 text-slate-400" />
+                  <p className="font-medium text-slate-700 dark:text-slate-300">Click to select file</p>
+                  <p className="text-sm text-slate-500">Excel (.xlsx, .xls) or CSV</p>
+                </div>
+              )}
+            </div>
+
+            {/* Required Format Info */}
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h4 className="font-semibold text-sm text-blue-700 dark:text-blue-400 mb-2">Required Excel Format</h4>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-blue-200 dark:border-blue-700">
+                    <th className="text-left py-1 text-blue-600 dark:text-blue-400">Name</th>
+                    <th className="text-left py-1 text-blue-600 dark:text-blue-400">Email</th>
+                    <th className="text-left py-1 text-blue-600 dark:text-blue-400">Role</th>
+                    <th className="text-left py-1 text-blue-600 dark:text-blue-400">Group</th>
+                  </tr>
+                </thead>
+                <tbody className="text-slate-600 dark:text-slate-400">
+                  <tr>
+                    <td className="py-1">John Doe</td>
+                    <td className="py-1">john@example.com</td>
+                    <td className="py-1">user</td>
+                    <td className="py-1">Premium</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1">Jane Smith</td>
+                    <td className="py-1">jane@example.com</td>
+                    <td className="py-1">admin</td>
+                    <td className="py-1"></td>
+                  </tr>
+                </tbody>
+              </table>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                * Role (admin/user/viewer) and Group columns are optional. Default password: ChangeMeNow123!
+              </p>
+            </div>
+
+            {/* Import Result */}
+            {importResult && (
+              <div className={`mt-4 p-4 rounded-lg ${
+                importResult.errors.length > 0 && importResult.imported === 0
+                  ? 'bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800'
+                  : importResult.errors.length > 0
+                  ? 'bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800'
+                  : 'bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800'
+              }`}>
+                <div className="flex items-start gap-3">
+                  {importResult.imported > 0 ? (
+                    <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 mt-0.5" />
+                  )}
+                  <div>
+                    <p className="font-semibold text-sm">
+                      {importResult.imported > 0 ? 'Import Completed' : 'Import Failed'}
+                    </p>
+                    <ul className="text-sm mt-1 space-y-0.5">
+                      <li className="text-emerald-700 dark:text-emerald-400">✓ {importResult.imported} users imported</li>
+                      {importResult.skipped > 0 && (
+                        <li className="text-slate-600 dark:text-slate-400">→ {importResult.skipped} skipped (duplicates)</li>
+                      )}
+                      {importResult.errors.length > 0 && (
+                        <li className="text-rose-700 dark:text-rose-400">✗ {importResult.errors.length} errors</li>
+                      )}
+                    </ul>
+                    {importResult.errors.length > 0 && importResult.errors.length <= 5 && (
+                      <div className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+                        {importResult.errors.map((err, i) => (
+                          <p key={i}>Row {err.row}: {err.message}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleImportUsers}
+                disabled={!importFile || importing}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-md transition-colors font-medium"
+                data-testid="confirm-import-btn"
+              >
+                {importing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Import Users
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="flex-1 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+                data-testid="cancel-import-btn"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
