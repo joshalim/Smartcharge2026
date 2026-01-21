@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe, Activity } from 'lucide-react';
+import { LayoutDashboard, Zap, Upload, Users, LogOut, Menu, X, DollarSign, Globe, Activity, Battery, BarChart3 } from 'lucide-react';
 
 function Layout() {
   const { user, logout } = useAuth();
@@ -14,7 +14,9 @@ function Layout() {
     { name: t('nav.dashboard'), href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'user', 'viewer'] },
     { name: t('nav.transactions'), href: '/transactions', icon: Zap, roles: ['admin', 'user', 'viewer'] },
     { name: t('nav.import'), href: '/import', icon: Upload, roles: ['admin', 'user'] },
+    { name: t('nav.chargers'), href: '/chargers', icon: Battery, roles: ['admin'] },
     { name: t('nav.pricing'), href: '/pricing', icon: DollarSign, roles: ['admin'] },
+    { name: t('nav.reports'), href: '/reports', icon: BarChart3, roles: ['admin', 'user'] },
     { name: 'OCPP', href: '/ocpp', icon: Activity, roles: ['admin', 'user'] },
     { name: t('nav.users'), href: '/users', icon: Users, roles: ['admin'] },
   ];

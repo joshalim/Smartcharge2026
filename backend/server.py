@@ -485,8 +485,34 @@ async def import_transactions(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {str(e)}")
     
-    required_columns = ['TxID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter value(kW.h)']
-    missing_columns = [col for col in required_columns if col not in df.columns]
+    # Create case-insensitive column mapping
+    df_columns_lower = {col.lower(): col for col in df.columns}
+    required_columns_map = {
+        'txid': 'TxID',
+        'station': 'Station', 
+        'connector': 'Connector',
+        'account': 'Account',
+        'start time': 'Start Time',
+        'end time': 'End Time',
+        'meter value(kw.h)': 'Meter value(kW.h)'
+    }
+    
+    # Normalize column names
+    column_mapping = {}
+    missing_columns = []
+    for required_lower, required_display in required_columns_map.items():
+        found = False
+        for df_col_lower, df_col_orig in df_columns_lower.items():
+            if df_col_lower == required_lower:
+                column_mapping[df_col_orig] = required_display
+                found = True
+                break
+        if not found:
+            missing_columns.append(required_display)
+    
+    # Rename columns to standard names
+    if column_mapping:
+        df = df.rename(columns=column_mapping)
     
     if missing_columns:
         raise HTTPException(

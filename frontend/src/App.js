@@ -84,6 +84,22 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="chargers"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <Chargers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <Reports />
+            </ProtectedRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
