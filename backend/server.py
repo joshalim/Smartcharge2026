@@ -262,6 +262,76 @@ class RFIDCardUpdate(BaseModel):
 class RFIDTopUp(BaseModel):
     amount: float
 
+# User Create/Update Models
+class UserCreate(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str = "user"
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    password: Optional[str] = None
+
+# PayU Payment Models
+class PayUTopUpRequest(BaseModel):
+    rfid_card_id: str
+    amount: float
+    buyer_name: str
+    buyer_email: str
+    buyer_phone: str
+
+class PayUWebhook(BaseModel):
+    model_config = ConfigDict(extra="allow")
+    reference_sale: Optional[str] = None
+    state_pol: Optional[str] = None
+    response_code_pol: Optional[str] = None
+    sign: Optional[str] = None
+    merchant_id: Optional[str] = None
+    value: Optional[str] = None
+    currency: Optional[str] = None
+    transaction_id: Optional[str] = None
+
+# RFID Card History Model
+class RFIDHistory(BaseModel):
+    id: str
+    card_id: str
+    card_number: str
+    type: str  # topup, charge, adjustment
+    amount: float
+    balance_before: float
+    balance_after: float
+    description: str
+    reference_id: Optional[str] = None
+    created_at: str
+
+# Invoice Webhook Model
+class InvoiceWebhookConfig(BaseModel):
+    webhook_url: str
+    api_key: Optional[str] = None
+    enabled: bool = True
+
+class InvoiceWebhookPayload(BaseModel):
+    event_type: str  # transaction_completed
+    transaction_id: str
+    tx_id: str
+    account: str
+    station: str
+    connector: str
+    connector_type: Optional[str] = None
+    start_time: str
+    end_time: str
+    charging_duration: Optional[str] = None
+    meter_value: float
+    cost: float
+    payment_status: str
+    payment_type: Optional[str] = None
+    payment_date: Optional[str] = None
+    rfid_card_number: Optional[str] = None
+    user_email: Optional[str] = None
+    created_at: str
+
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
