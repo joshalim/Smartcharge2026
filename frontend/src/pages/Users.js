@@ -911,7 +911,7 @@ function Users() {
                     </button>
                     
                     <p className="text-xs text-slate-500 text-center">
-                      You will be redirected to PayU's secure payment page (Sandbox Mode)
+                      You will be redirected to PayU&apos;s secure payment page (Sandbox Mode)
                     </p>
                   </>
                 ) : (
