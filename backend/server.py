@@ -535,7 +535,7 @@ async def import_transactions(
         price_per_kwh = await get_pricing(account, connector, connector_type)
         cost = meter_value * price_per_kwh
         
-        start_time = str(row['Start time']) if not pd.isna(row['Start time']) else ""
+        start_time = str(row['Start Time']) if not pd.isna(row['Start Time']) else ""
         end_time = str(row['End Time']) if not pd.isna(row['End Time']) else ""
         charging_duration = calculate_charging_duration(start_time, end_time)
         
