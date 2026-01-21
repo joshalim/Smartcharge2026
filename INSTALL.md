@@ -2,7 +2,116 @@
 
 This guide covers deploying the Smart Charge EV Charging Management System on a self-hosted Ubuntu server.
 
-## Prerequisites
+## Deployment Options
+
+1. **[Docker Compose](#docker-deployment)** (Recommended) - Fastest setup
+2. **[Manual Installation](#manual-installation)** - Full control over setup
+
+---
+
+## Docker Deployment
+
+### Prerequisites
+- Docker and Docker Compose installed
+- Domain name (optional, for SSL)
+
+### Quick Start with Docker
+
+```bash
+# Clone repository
+git clone https://github.com/YOUR_USERNAME/ev-charging-management.git
+cd ev-charging-management
+
+# Create environment file
+cp .env.example .env
+
+# Edit .env file with your settings
+nano .env
+# Set JWT_SECRET to a secure random string
+# Set REACT_APP_BACKEND_URL to your domain or IP
+
+# Generate secure JWT secret
+JWT_SECRET=$(openssl rand -hex 32)
+sed -i "s/your-super-secure-jwt-secret-change-this/$JWT_SECRET/" .env
+
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Access at http://localhost or your domain
+```
+
+### Docker Commands
+
+```bash
+# Start services
+docker-compose up -d
+
+# Stop services
+docker-compose down
+
+# Rebuild after code changes
+docker-compose up -d --build
+
+# View logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# Access MongoDB shell
+docker exec -it evcharging-mongodb mongosh
+
+# Backup MongoDB
+docker exec evcharging-mongodb mongodump --out /data/backup
+docker cp evcharging-mongodb:/data/backup ./backup
+
+# Restore MongoDB
+docker cp ./backup evcharging-mongodb:/data/backup
+docker exec evcharging-mongodb mongorestore /data/backup
+```
+
+### Docker with SSL (Traefik)
+
+For production with SSL, add Traefik as a reverse proxy:
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@yourdomain.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - evcharging-network
+
+  frontend:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+    # Remove ports section from frontend in main docker-compose.yml
+```
+
+---
+
+## Prerequisites (Manual Installation)
 
 - Ubuntu 20.04 LTS or 22.04 LTS
 - Domain name pointing to your server (for SSL)
