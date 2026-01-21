@@ -78,6 +78,57 @@ function Users() {
     }
   };
 
+  // User Import
+  const openImportModal = () => {
+    setImportFile(null);
+    setImportResult(null);
+    setShowImportModal(true);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const validTypes = ['.xlsx', '.xls', '.csv'];
+      const isValid = validTypes.some(ext => file.name.toLowerCase().endsWith(ext));
+      if (!isValid) {
+        alert('Please select an Excel (.xlsx, .xls) or CSV file');
+        return;
+      }
+      setImportFile(file);
+      setImportResult(null);
+    }
+  };
+
+  const handleImportUsers = async () => {
+    if (!importFile) return;
+    
+    setImporting(true);
+    setImportResult(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      
+      const response = await axios.post(`${API}/users/import`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setImportResult(response.data);
+      if (response.data.imported > 0) {
+        fetchUsers();
+      }
+    } catch (error) {
+      console.error('Failed to import users:', error);
+      setImportResult({
+        imported: 0,
+        skipped: 0,
+        errors: [{ row: 0, field: 'File', message: error.response?.data?.detail || 'Failed to import users' }]
+      });
+    } finally {
+      setImporting(false);
+    }
+  };
+
   // User CRUD
   const openCreateUser = () => {
     setEditingUser(null);
