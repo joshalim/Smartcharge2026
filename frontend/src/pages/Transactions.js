@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Filter, Download, Trash2, Edit, X, Check } from 'lucide-react';
+import { Filter, Download, Trash2, Edit, X, Check, CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCOP, formatNumber } from '../utils/currency';
 
@@ -24,6 +24,9 @@ function Transactions() {
   const [showFilters, setShowFilters] = useState(false);
   const [editingTx, setEditingTx] = useState(null);
   const [editForm, setEditForm] = useState({});
+  const [selectedTxs, setSelectedTxs] = useState([]);
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkPaymentType, setBulkPaymentType] = useState('NEQUI');
 
   useEffect(() => {
     fetchTransactions();
@@ -55,6 +58,7 @@ function Transactions() {
 
       const response = await axios.get(`${API}/transactions`, { params });
       setTransactions(response.data);
+      setSelectedTxs([]);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
     } finally {
@@ -127,6 +131,71 @@ function Transactions() {
     }
   };
 
+  const toggleSelectTx = (txId) => {
+    setSelectedTxs((prev) =>
+      prev.includes(txId) ? prev.filter((id) => id !== txId) : [...prev, txId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedTxs.length === transactions.length) {
+      setSelectedTxs([]);
+    } else {
+      setSelectedTxs(transactions.map((tx) => tx.id));
+    }
+  };
+
+  const handleBulkMarkAsPaid = async () => {
+    if (selectedTxs.length === 0) return;
+    if (!window.confirm(`Mark ${selectedTxs.length} transactions as PAID?`)) return;
+
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      await Promise.all(
+        selectedTxs.map((txId) =>
+          axios.patch(`${API}/transactions/${txId}`, {
+            payment_status: 'PAID',
+            payment_type: bulkPaymentType,
+            payment_date: today,
+          })
+        )
+      );
+      fetchTransactions();
+      setShowBulkActions(false);
+    } catch (error) {
+      console.error('Failed to bulk update:', error);
+      alert('Failed to update transactions');
+    }
+  };
+
+  const exportSelected = () => {
+    const selectedTransactions = transactions.filter((tx) => selectedTxs.includes(tx.id));
+    const headers = ['Tx ID', 'Station', 'Connector', 'Connector Type', 'Account', 'Start Time', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Payment Status', 'Payment Type', 'Payment Date'];
+    const rows = selectedTransactions.map((tx) => [
+      tx.tx_id,
+      tx.station,
+      tx.connector,
+      tx.connector_type || '',
+      tx.account,
+      tx.start_time,
+      tx.end_time,
+      tx.charging_duration || '',
+      tx.meter_value,
+      tx.cost,
+      tx.payment_status,
+      tx.payment_type || '',
+      tx.payment_date || '',
+    ]);
+
+    const csvContent =
+      'data:text/csv;charset=utf-8,' + [headers, ...rows].map((row) => row.join(',')).join('\n');
+
+    const link = document.createElement('a');
+    link.href = encodeURI(csvContent);
+    link.download = `selected_transactions_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
   const exportToCSV = () => {
     const headers = ['Tx ID', 'Station', 'Connector', 'Connector Type', 'Account', 'Start Time', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Payment Status', 'Payment Type', 'Payment Date'];
     const rows = transactions.map((tx) => [
@@ -166,6 +235,16 @@ function Transactions() {
           <p className="text-slate-500 dark:text-slate-400">{t('transactions.subtitle')}</p>
         </div>
         <div className="flex gap-2">
+          {(user?.role === 'admin' || user?.role === 'user') && selectedTxs.length > 0 && (
+            <button
+              onClick={() => setShowBulkActions(!showBulkActions)}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors font-medium"
+              data-testid="bulk-actions-btn"
+            >
+              <CheckSquare className="w-4 h-4" />
+              {selectedTxs.length} Selected
+            </button>
+          )}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="flex items-center gap-2 px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
@@ -190,6 +269,47 @@ function Transactions() {
           </button>
         </div>
       </div>
+
+      {/* Bulk Actions Panel */}
+      {showBulkActions && selectedTxs.length > 0 && (
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6" data-testid="bulk-actions-panel">
+          <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
+            Bulk Actions ({selectedTxs.length} transactions)
+          </h3>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium">Payment Type:</label>
+              <select
+                value={bulkPaymentType}
+                onChange={(e) => setBulkPaymentType(e.target.value)}
+                className="px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm"
+              >
+                <option value="NEQUI">NEQUI</option>
+                <option value="DAVIPLATA">DAVIPLATA</option>
+                <option value="EFECTIVO">EFECTIVO</option>
+              </select>
+            </div>
+            <button
+              onClick={handleBulkMarkAsPaid}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors font-medium"
+            >
+              Mark as PAID
+            </button>
+            <button
+              onClick={exportSelected}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium"
+            >
+              Export Selected
+            </button>
+            <button
+              onClick={() => setSelectedTxs([])}
+              className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+      )}
 
       {showFilters && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6" data-testid="filters-panel">
@@ -292,6 +412,17 @@ function Transactions() {
             <table className="w-full" data-testid="transactions-table">
               <thead className="bg-slate-50 dark:bg-slate-800 sticky top-0">
                 <tr>
+                  {(user?.role === 'admin' || user?.role === 'user') && (
+                    <th className="text-left py-4 px-4 text-xs font-semibold">
+                      <button onClick={toggleSelectAll} className="hover:text-orange-600">
+                        {selectedTxs.length === transactions.length ? (
+                          <CheckSquare className="w-5 h-5" />
+                        ) : (
+                          <Square className="w-5 h-5" />
+                        )}
+                      </button>
+                    </th>
+                  )}
                   <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.txId')}</th>
                   <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.account')}</th>
                   <th className="text-left py-4 px-4 text-xs font-semibold text-slate-700 dark:text-slate-300">{t('transactions.connector')}</th>
@@ -316,6 +447,7 @@ function Transactions() {
                     {editingTx === tx.id ? (
                       // Edit mode
                       <>
+                        {(user?.role === 'admin' || user?.role === 'user') && <td className="py-4 px-4"></td>}
                         <td className="py-4 px-4 text-sm font-medium">{tx.tx_id}</td>
                         <td className="py-4 px-4">
                           <input
@@ -400,6 +532,20 @@ function Transactions() {
                     ) : (
                       // View mode
                       <>
+                        {(user?.role === 'admin' || user?.role === 'user') && (
+                          <td className="py-4 px-4">
+                            <button
+                              onClick={() => toggleSelectTx(tx.id)}
+                              className="hover:text-orange-600 transition-colors"
+                            >
+                              {selectedTxs.includes(tx.id) ? (
+                                <CheckSquare className="w-5 h-5 text-orange-600" />
+                              ) : (
+                                <Square className="w-5 h-5" />
+                              )}
+                            </button>
+                          </td>
+                        )}
                         <td className="py-4 px-4 text-sm font-medium text-slate-900 dark:text-slate-100">{tx.tx_id}</td>
                         <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-400">{tx.account}</td>
                         <td className="py-4 px-4 text-sm text-slate-600 dark:text-slate-400">{tx.connector}</td>
