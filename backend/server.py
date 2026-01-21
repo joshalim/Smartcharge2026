@@ -699,6 +699,142 @@ async def update_user_role(
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "Role updated successfully"}
 
+# RFID Card Management
+@api_router.get("/rfid-cards", response_model=List[RFIDCard])
+async def get_all_rfid_cards(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Get all RFID cards with user info"""
+    cards = await db.rfid_cards.find({}, {"_id": 0}).to_list(500)
+    
+    # Enrich with user info
+    for card in cards:
+        user = await db.users.find_one({"id": card.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+        if user:
+            card["user_name"] = user.get("name", "Unknown")
+            card["user_email"] = user.get("email", "")
+    
+    return [RFIDCard(**c) for c in cards]
+
+@api_router.get("/rfid-cards/user/{user_id}", response_model=List[RFIDCard])
+async def get_user_rfid_cards(
+    user_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get RFID cards for a specific user"""
+    cards = await db.rfid_cards.find({"user_id": user_id}, {"_id": 0}).to_list(50)
+    
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "name": 1, "email": 1})
+    for card in cards:
+        if user:
+            card["user_name"] = user.get("name", "Unknown")
+            card["user_email"] = user.get("email", "")
+    
+    return [RFIDCard(**c) for c in cards]
+
+@api_router.post("/rfid-cards", response_model=RFIDCard)
+async def create_rfid_card(
+    card_data: RFIDCardCreate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Create a new RFID card for a user"""
+    # Check if card number already exists
+    existing = await db.rfid_cards.find_one({"card_number": card_data.card_number})
+    if existing:
+        raise HTTPException(status_code=400, detail="Card number already exists")
+    
+    # Check if user exists
+    user = await db.users.find_one({"id": card_data.user_id}, {"_id": 0, "name": 1, "email": 1})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    card = {
+        "id": str(uuid.uuid4()),
+        **card_data.model_dump(),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.rfid_cards.insert_one(card)
+    
+    card["user_name"] = user.get("name", "Unknown")
+    card["user_email"] = user.get("email", "")
+    
+    return RFIDCard(**{k: v for k, v in card.items() if k != "_id"})
+
+@api_router.patch("/rfid-cards/{card_id}", response_model=RFIDCard)
+async def update_rfid_card(
+    card_id: str,
+    update_data: RFIDCardUpdate,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Update RFID card details"""
+    existing = await db.rfid_cards.find_one({"id": card_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    update_dict = {k: v for k, v in update_data.model_dump().items() if v is not None}
+    
+    # Check for duplicate card number
+    if "card_number" in update_dict:
+        duplicate = await db.rfid_cards.find_one({
+            "card_number": update_dict["card_number"],
+            "id": {"$ne": card_id}
+        })
+        if duplicate:
+            raise HTTPException(status_code=400, detail="Card number already exists")
+    
+    if update_dict:
+        await db.rfid_cards.update_one({"id": card_id}, {"$set": update_dict})
+        existing.update(update_dict)
+    
+    # Get user info
+    user = await db.users.find_one({"id": existing.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+    if user:
+        existing["user_name"] = user.get("name", "Unknown")
+        existing["user_email"] = user.get("email", "")
+    
+    return RFIDCard(**existing)
+
+@api_router.post("/rfid-cards/{card_id}/topup", response_model=RFIDCard)
+async def topup_rfid_card(
+    card_id: str,
+    topup: RFIDTopUp,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Add balance to RFID card"""
+    if topup.amount <= 0:
+        raise HTTPException(status_code=400, detail="Top-up amount must be positive")
+    
+    existing = await db.rfid_cards.find_one({"id": card_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    new_balance = existing.get("balance", 0) + topup.amount
+    
+    await db.rfid_cards.update_one(
+        {"id": card_id},
+        {"$set": {"balance": new_balance}}
+    )
+    
+    existing["balance"] = new_balance
+    
+    # Get user info
+    user = await db.users.find_one({"id": existing.get("user_id")}, {"_id": 0, "name": 1, "email": 1})
+    if user:
+        existing["user_name"] = user.get("name", "Unknown")
+        existing["user_email"] = user.get("email", "")
+    
+    return RFIDCard(**existing)
+
+@api_router.delete("/rfid-cards/{card_id}")
+async def delete_rfid_card(
+    card_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Delete an RFID card"""
+    result = await db.rfid_cards.delete_one({"id": card_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    return {"message": "RFID card deleted successfully"}
+
 # Filters
 @api_router.get("/filters/stations")
 async def get_stations(current_user: User = Depends(get_current_user)):
