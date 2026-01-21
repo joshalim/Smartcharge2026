@@ -675,7 +675,19 @@ async def get_ocpp_status(current_user: User = Depends(get_current_user)):
         "ocpp_version": "1.6"
     }
 
-@api_router.get(\"/ocpp/boots\")\nasync def get_ocpp_boots(current_user: User = Depends(get_current_user)):\n    \"\"\"Get all registered charge points\"\"\"\n    boots = await db.ocpp_boots.find({}, {\"_id\": 0}).sort(\"timestamp\", -1).to_list(50)\n    return boots\n\n@api_router.get(\"/ocpp/active-transactions\")\nasync def get_active_ocpp_transactions(current_user: User = Depends(get_current_user)):\n    \"\"\"Get active OCPP transactions\"\"\"\n    active_txs = await db.ocpp_transactions.find({\"status\": \"active\"}, {\"_id\": 0}).to_list(50)\n    return active_txs\n\napp.include_router(api_router)
+@api_router.get("/ocpp/boots")
+async def get_ocpp_boots(current_user: User = Depends(get_current_user)):
+    """Get all registered charge points"""
+    boots = await db.ocpp_boots.find({}, {"_id": 0}).sort("timestamp", -1).to_list(50)
+    return boots
+
+@api_router.get("/ocpp/active-transactions")
+async def get_active_ocpp_transactions(current_user: User = Depends(get_current_user)):
+    """Get active OCPP transactions"""
+    active_txs = await db.ocpp_transactions.find({"status": "active"}, {"_id": 0}).to_list(50)
+    return active_txs
+
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
