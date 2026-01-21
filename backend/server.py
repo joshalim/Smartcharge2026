@@ -1685,6 +1685,111 @@ async def test_invoice_webhook(current_user: User = Depends(require_role(UserRol
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Webhook test failed: {str(e)}")
 
+# Settings API
+@api_router.get("/settings/payu")
+async def get_payu_settings(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Get PayU configuration (masked API key)"""
+    settings = await db.settings.find_one({"type": "payu"}, {"_id": 0})
+    if settings:
+        # Mask API key for security
+        if settings.get("api_key"):
+            settings["api_key"] = settings["api_key"][:4] + "****" + settings["api_key"][-4:]
+    return settings or {"type": "payu", "api_key": "", "api_login": "", "merchant_id": "", "account_id": "", "test_mode": True}
+
+@api_router.post("/settings/payu")
+async def save_payu_settings(
+    settings: PayUSettings,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Save PayU configuration"""
+    existing = await db.settings.find_one({"type": "payu"})
+    
+    settings_data = {
+        "type": "payu",
+        **settings.model_dump(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user.email
+    }
+    
+    if existing:
+        await db.settings.update_one({"type": "payu"}, {"$set": settings_data})
+    else:
+        settings_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.settings.insert_one(settings_data)
+    
+    return {"message": "PayU settings saved successfully"}
+
+@api_router.get("/settings/sendgrid")
+async def get_sendgrid_settings(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Get SendGrid configuration (masked API key)"""
+    settings = await db.settings.find_one({"type": "sendgrid"}, {"_id": 0})
+    if settings:
+        if settings.get("api_key"):
+            settings["api_key"] = settings["api_key"][:4] + "****" + settings["api_key"][-4:]
+    return settings or {"type": "sendgrid", "api_key": "", "sender_email": "", "sender_name": "EV Charging System", "enabled": False}
+
+@api_router.post("/settings/sendgrid")
+async def save_sendgrid_settings(
+    settings: SendGridSettings,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Save SendGrid configuration"""
+    existing = await db.settings.find_one({"type": "sendgrid"})
+    
+    settings_data = {
+        "type": "sendgrid",
+        **settings.model_dump(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "updated_by": current_user.email
+    }
+    
+    if existing:
+        await db.settings.update_one({"type": "sendgrid"}, {"$set": settings_data})
+    else:
+        settings_data["created_at"] = datetime.now(timezone.utc).isoformat()
+        await db.settings.insert_one(settings_data)
+    
+    return {"message": "SendGrid settings saved successfully"}
+
+@api_router.post("/settings/sendgrid/test")
+async def test_sendgrid_email(
+    test_email: str = Query(..., description="Email address to send test to"),
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    """Send a test email via SendGrid"""
+    settings = await db.settings.find_one({"type": "sendgrid"}, {"_id": 0})
+    
+    if not settings or not settings.get("api_key"):
+        raise HTTPException(status_code=400, detail="SendGrid not configured")
+    
+    try:
+        sg = SendGridAPIClient(settings["api_key"])
+        
+        message = Mail(
+            from_email=(settings.get("sender_email"), settings.get("sender_name", "EV Charging System")),
+            to_emails=test_email,
+            subject="Test Email - EV Charging System",
+            html_content="""
+            <html>
+            <body style="font-family: Arial, sans-serif;">
+                <h2>Test Email</h2>
+                <p>This is a test email from your EV Charging System.</p>
+                <p>If you received this, SendGrid is configured correctly!</p>
+            </body>
+            </html>
+            """
+        )
+        
+        response = sg.send(message)
+        
+        return {
+            "success": response.status_code == 202,
+            "status_code": response.status_code,
+            "message": "Test email sent successfully" if response.status_code == 202 else "Failed to send"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send test email: {str(e)}")
+
 # Invoice Generation
 @api_router.get("/transactions/{transaction_id}/invoice")
 async def generate_invoice(
