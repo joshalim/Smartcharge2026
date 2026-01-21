@@ -11,6 +11,7 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Remote control commands
 - PDF invoicing
 - Reports with charts
+- RFID card management with top-up
 
 ## Core Features
 
@@ -18,6 +19,7 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - JWT-based authentication
 - Three roles: Admin, User, Viewer
 - Role-based route protection
+- Demo credentials shown on login page
 
 ### 2. Dashboard
 - Total transactions, energy, revenue stats
@@ -41,19 +43,19 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
   - CHADEMO: 2000 COP/kWh
   - J1772: 1500 COP/kWh
 
-### 5. Charger Management ✅ (Completed Jan 2026)
+### 5. Charger Management ✅
 - Full CRUD operations (Create, Read, Update, Delete)
 - Charger details: name, location, model, serial number, connector types, max power, status
 - Card-based UI with status badges
 
-### 6. OCPP Monitoring ✅ (Completed Jan 2026)
+### 6. OCPP Monitoring ✅
 - OCPP 1.6 endpoint support
 - Remote Control panel with Start/Stop charging buttons
 - Active charging sessions table
 - Registered charge points display
 - **Note**: OCPP is simulated via REST endpoints, not full WebSocket protocol
 
-### 7. Reports & Analytics ✅ (Completed Jan 2026)
+### 7. Reports & Analytics ✅
 - Comprehensive filtering (date range, account, connector type, payment type/status)
 - Summary cards (total transactions, energy, revenue, paid/unpaid)
 - **Charts**:
@@ -64,12 +66,19 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Detailed data tables
 - CSV export
 
-### 8. PDF Invoicing
+### 8. RFID Card Management ✅ (Added Jan 2026)
+- Create/Edit/Delete RFID cards for users
+- Card details: card number, assigned user, balance, status (active/inactive/blocked)
+- **Top-up functionality** with preset amounts ($10k, $25k, $50k, $100k, $200k COP)
+- Card balance display
+- Tabbed UI in User Management page
+
+### 9. PDF Invoicing
 - Generate invoices for paid transactions
 - Colombian Peso formatting
 - Company branding
 
-### 9. Internationalization
+### 10. Internationalization
 - English and Spanish support
 - Language toggle in sidebar
 
@@ -91,14 +100,15 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - ✅ Reports generation API
 - ✅ PDF invoice generation
 - ✅ Filter endpoints (stations, accounts)
+- ✅ **RFID Card CRUD endpoints** (create, read, update, delete, top-up)
 
 ### Frontend (`/app/frontend/src/`)
-- ✅ Login page with company branding
+- ✅ Login page with company branding and **demo credentials**
 - ✅ Dashboard with stats cards
 - ✅ Transactions page (filtering, bulk update, invoice download)
 - ✅ Import page for Excel files
 - ✅ Pricing configuration page
-- ✅ User management page
+- ✅ User management page with **RFID Cards tab**
 - ✅ Chargers page with full CRUD UI
 - ✅ OCPP page with remote control buttons
 - ✅ Reports page with bar/pie charts and tables
@@ -120,3 +130,4 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 2. **P2**: User grouping for pricing rules
 3. **P2**: Backend refactoring (split server.py into modules)
 4. **P3**: Advanced analytics with date trend charts
+5. **P3**: RFID card usage history/transactions
