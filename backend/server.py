@@ -988,6 +988,193 @@ async def delete_rfid_card(
         raise HTTPException(status_code=404, detail="RFID card not found")
     return {"message": "RFID card deleted successfully"}
 
+# RFID Card History
+@api_router.get("/rfid-cards/{card_id}/history", response_model=List[RFIDHistory])
+async def get_rfid_card_history(
+    card_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get transaction history for an RFID card"""
+    history = await db.rfid_history.find({"card_id": card_id}, {"_id": 0}).sort("created_at", -1).to_list(100)
+    return [RFIDHistory(**h) for h in history]
+
+async def log_rfid_history(card_id: str, card_number: str, history_type: str, 
+                          amount: float, balance_before: float, balance_after: float,
+                          description: str, reference_id: str = None):
+    """Helper function to log RFID card transactions"""
+    history_record = {
+        "id": str(uuid.uuid4()),
+        "card_id": card_id,
+        "card_number": card_number,
+        "type": history_type,
+        "amount": amount,
+        "balance_before": balance_before,
+        "balance_after": balance_after,
+        "description": description,
+        "reference_id": reference_id,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.rfid_history.insert_one(history_record)
+    return history_record
+
+# PayU Colombia Integration for RFID Top-Up
+def generate_payu_signature(api_key: str, merchant_id: str, reference_code: str, amount: str, currency: str) -> str:
+    """Generate MD5 signature for PayU WebCheckout"""
+    signature_string = f"{api_key}~{merchant_id}~{reference_code}~{amount}~{currency}"
+    return hashlib.md5(signature_string.encode()).hexdigest()
+
+@api_router.post("/payu/initiate-topup")
+async def initiate_payu_topup(
+    topup_request: PayUTopUpRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Initiate PayU payment for RFID card top-up"""
+    # Validate RFID card exists
+    card = await db.rfid_cards.find_one({"id": topup_request.rfid_card_id}, {"_id": 0})
+    if not card:
+        raise HTTPException(status_code=404, detail="RFID card not found")
+    
+    if card.get("status") != "active":
+        raise HTTPException(status_code=400, detail="RFID card is not active")
+    
+    # Generate unique reference code
+    reference_code = f"TOPUP-{uuid.uuid4().hex[:12].upper()}"
+    amount_str = f"{topup_request.amount:.2f}"
+    
+    # Generate PayU signature
+    signature = generate_payu_signature(
+        PAYU_API_KEY,
+        PAYU_MERCHANT_ID,
+        reference_code,
+        amount_str,
+        "COP"
+    )
+    
+    # Create pending payment record
+    payment_record = {
+        "id": str(uuid.uuid4()),
+        "reference_code": reference_code,
+        "rfid_card_id": topup_request.rfid_card_id,
+        "card_number": card.get("card_number"),
+        "user_id": card.get("user_id"),
+        "amount": topup_request.amount,
+        "buyer_name": topup_request.buyer_name,
+        "buyer_email": topup_request.buyer_email,
+        "buyer_phone": topup_request.buyer_phone,
+        "status": "PENDING",
+        "payu_response": {},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.payu_payments.insert_one(payment_record)
+    
+    # Return PayU WebCheckout form data
+    return {
+        "payment_id": payment_record["id"],
+        "reference_code": reference_code,
+        "payu_url": PAYU_API_URL,
+        "form_data": {
+            "merchantId": PAYU_MERCHANT_ID,
+            "accountId": PAYU_ACCOUNT_ID,
+            "description": f"RFID Card Top-Up - {card.get('card_number')}",
+            "referenceCode": reference_code,
+            "amount": amount_str,
+            "tax": "0",
+            "taxReturnBase": "0",
+            "currency": "COP",
+            "signature": signature,
+            "test": "1" if PAYU_TEST_MODE else "0",
+            "buyerEmail": topup_request.buyer_email,
+            "buyerFullName": topup_request.buyer_name,
+            "telephone": topup_request.buyer_phone,
+            "responseUrl": f"{FRONTEND_URL}/payment-response",
+            "confirmationUrl": f"{os.environ.get('BACKEND_URL', 'http://localhost:8001')}/api/payu/webhook"
+        }
+    }
+
+@api_router.post("/payu/webhook")
+async def payu_webhook(request: Request):
+    """Handle PayU payment confirmation webhook"""
+    try:
+        form_data = await request.form()
+        webhook_data = dict(form_data)
+        
+        reference_code = webhook_data.get('reference_sale', '')
+        state_pol = webhook_data.get('state_pol', '')
+        response_code = webhook_data.get('response_code_pol', '')
+        transaction_id = webhook_data.get('transaction_id', '')
+        
+        # Map PayU states: 4=Approved, 6=Declined, 5=Expired, 7=Pending
+        status_mapping = {
+            '4': 'APPROVED',
+            '6': 'DECLINED',
+            '5': 'EXPIRED',
+            '7': 'PENDING'
+        }
+        payment_status = status_mapping.get(state_pol, 'UNKNOWN')
+        
+        # Find and update payment record
+        payment = await db.payu_payments.find_one({"reference_code": reference_code})
+        
+        if payment:
+            await db.payu_payments.update_one(
+                {"reference_code": reference_code},
+                {"$set": {
+                    "status": payment_status,
+                    "payu_response": webhook_data,
+                    "payu_transaction_id": transaction_id,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # If payment approved, top up the RFID card
+            if payment_status == 'APPROVED':
+                card = await db.rfid_cards.find_one({"id": payment["rfid_card_id"]})
+                if card:
+                    old_balance = card.get("balance", 0)
+                    new_balance = old_balance + payment["amount"]
+                    
+                    await db.rfid_cards.update_one(
+                        {"id": payment["rfid_card_id"]},
+                        {"$set": {"balance": new_balance}}
+                    )
+                    
+                    # Log history
+                    await log_rfid_history(
+                        card_id=payment["rfid_card_id"],
+                        card_number=card.get("card_number"),
+                        history_type="topup",
+                        amount=payment["amount"],
+                        balance_before=old_balance,
+                        balance_after=new_balance,
+                        description=f"PayU Online Top-Up ({reference_code})",
+                        reference_id=reference_code
+                    )
+        
+        # Log webhook for audit
+        await db.payu_webhook_logs.insert_one({
+            "id": str(uuid.uuid4()),
+            "reference_code": reference_code,
+            "webhook_data": webhook_data,
+            "received_at": datetime.now(timezone.utc).isoformat()
+        })
+        
+        return {"status": "received"}
+    except Exception as e:
+        logging.error(f"PayU webhook error: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/payu/payment-status/{reference_code}")
+async def get_payu_payment_status(
+    reference_code: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get payment status for a PayU transaction"""
+    payment = await db.payu_payments.find_one({"reference_code": reference_code}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return payment
+
 # Filters
 @api_router.get("/filters/stations")
 async def get_stations(current_user: User = Depends(get_current_user)):
