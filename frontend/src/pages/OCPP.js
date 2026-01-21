@@ -410,15 +410,24 @@ function OCPP() {
               Start a remote charging session on <strong>{startModal.charger?.name}</strong>
             </p>
             <div className="mb-4">
-              <label className="block text-sm font-medium mb-2">ID Tag (User Identifier)</label>
+              <label className="block text-sm font-medium mb-2">RFID Card Number or ID Tag</label>
               <input
                 type="text"
                 value={idTag}
-                onChange={(e) => setIdTag(e.target.value)}
-                placeholder="Enter user ID or RFID tag"
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                onChange={(e) => setIdTag(e.target.value.toUpperCase())}
+                placeholder="Enter RFID card number (e.g., RFID-001-2024)"
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-orange-500"
                 data-testid="id-tag-input"
               />
+              <p className="text-xs text-slate-500 mt-2">
+                💳 Use an RFID card number to auto-deduct from balance when charging ends
+              </p>
+            </div>
+            <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                <strong>Note:</strong> If using RFID card, minimum balance of $5,000 COP is required. 
+                Cost will be automatically deducted when session ends.
+              </p>
             </div>
             <div className="flex gap-2">
               <button
