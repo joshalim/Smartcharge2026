@@ -29,6 +29,8 @@ const resources = {
       'dashboard.totalTransactions': 'Total Transactions',
       'dashboard.totalEnergy': 'Total Energy (kWh)',
       'dashboard.totalRevenue': 'Total Revenue',
+      'dashboard.paidRevenue': 'Paid Revenue',
+      'dashboard.unpaidRevenue': 'Unpaid Revenue',
       'dashboard.activeStations': 'Active Stations',
       'dashboard.uniqueAccounts': 'Unique Accounts',
       'dashboard.recentTransactions': 'Recent Transactions',
