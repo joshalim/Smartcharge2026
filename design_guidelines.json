@@ -1,0 +1,176 @@
+{
+  "typography": {
+    "fonts": {
+      "headings": {
+        "family": "Chivo, sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=Chivo:wght@300;400;700;900&display=swap",
+        "usage": "h1, h2, h3, h4, .text-display",
+        "weights": ["300", "400", "700", "900"]
+      },
+      "body": {
+        "family": "IBM Plex Sans, sans-serif",
+        "url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&display=swap",
+        "usage": "p, span, div, input, button, table",
+        "weights": ["300", "400", "500", "600"]
+      }
+    },
+    "rules": {
+      "h1": "text-4xl md:text-5xl font-black tracking-tight leading-none text-foreground",
+      "h2": "text-3xl md:text-4xl font-bold tracking-tight text-foreground",
+      "h3": "text-2xl font-bold tracking-tight text-foreground",
+      "body-lg": "text-lg font-normal leading-relaxed text-muted-foreground",
+      "body-base": "text-base font-normal leading-relaxed text-foreground",
+      "caption": "text-sm font-medium tracking-wide uppercase text-muted-foreground",
+      "data-value": "font-mono text-sm font-medium tracking-tight"
+    }
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#4F46E5",
+        "foreground": "#FFFFFF",
+        "hover": "#4338CA",
+        "description": "Electric Indigo - Use for primary actions, active states, and brand identity."
+      },
+      "secondary": {
+        "DEFAULT": "#10B981",
+        "foreground": "#FFFFFF",
+        "hover": "#059669",
+        "description": "Emerald - Use for 'Charging', 'Success', 'Online' states."
+      },
+      "destructive": {
+        "DEFAULT": "#F43F5E",
+        "foreground": "#FFFFFF",
+        "hover": "#E11D48",
+        "description": "Rose - Use for 'Faulted', 'Error', 'Offline', '0 kWh' alerts."
+      },
+      "background": {
+        "light": "#F8FAFC",
+        "dark": "#020617",
+        "card_light": "#FFFFFF",
+        "card_dark": "#0F172A"
+      },
+      "border": {
+        "light": "#E2E8F0",
+        "dark": "#1E293B"
+      }
+    },
+    "semantic_mapping": {
+      "app_bg": "bg-slate-50 dark:bg-slate-950",
+      "card_bg": "bg-white dark:bg-slate-900",
+      "text_primary": "text-slate-900 dark:text-slate-50",
+      "text_secondary": "text-slate-500 dark:text-slate-400",
+      "border_subtle": "border-slate-200 dark:border-slate-800",
+      "status_charging": "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800",
+      "status_faulted": "text-rose-600 bg-rose-50 dark:bg-rose-950/30 dark:text-rose-400 border border-rose-200 dark:border-rose-800",
+      "status_idle": "text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700"
+    }
+  },
+  "layout": {
+    "container": {
+      "max_width": "max-w-7xl",
+      "padding": "px-4 sm:px-6 lg:px-8",
+      "center": "mx-auto"
+    },
+    "spacing": {
+      "section_gap": "py-12 md:py-16",
+      "component_gap": "gap-6 md:gap-8",
+      "internal_padding": "p-6 md:p-8"
+    },
+    "grid_systems": {
+      "dashboard_bento": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6",
+      "form_layout": "grid grid-cols-1 md:grid-cols-2 gap-6",
+      "card_grid": "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+    }
+  },
+  "components": {
+    "cards": {
+      "style": "rounded-xl border border-border bg-card text-card-foreground shadow-sm hover:shadow-md transition-all duration-200",
+      "metric_card": "flex flex-col justify-between p-6 space-y-2"
+    },
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2 rounded-md font-medium transition-colors",
+      "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 rounded-md font-medium transition-colors",
+      "ghost": "hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 rounded-md font-medium transition-colors"
+    },
+    "inputs": {
+      "default": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+    },
+    "tables": {
+      "wrapper": "relative w-full overflow-auto rounded-md border",
+      "header": "bg-muted/50 sticky top-0 z-10 backdrop-blur-sm",
+      "row": "hover:bg-muted/50 transition-colors data-[state=selected]:bg-muted",
+      "cell": "p-4 align-middle [&:has([role=checkbox])]:pr-0"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "nav": "bg-background/80 backdrop-blur-md border-b border-border sticky top-0 z-50",
+      "overlay": "bg-background/80 backdrop-blur-sm"
+    },
+    "borders": {
+      "subtle": "border border-slate-200 dark:border-slate-800",
+      "active": "border-l-4 border-l-primary"
+    },
+    "shadows": {
+      "card": "shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none",
+      "dropdown": "shadow-lg border border-border"
+    }
+  },
+  "assets": {
+    "images": {
+      "login_bg": "https://images.pexels.com/photos/27243718/pexels-photo-27243718.jpeg",
+      "user_avatar_placeholder": "https://images.unsplash.com/photo-1758518731468-98e90ffd7430?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBidXNpbmVzcyUyMHBvcnRyYWl0JTIwZGl2ZXJzZXxlbnwwfHx8fDE3Njg5MTY5MTF8MA&ixlib=rb-4.1.0&q=85",
+      "logo_placeholder": "https://via.placeholder.com/150x50?text=EV+Charge+Ops"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "preferred_icons": {
+        "dashboard": "LayoutDashboard",
+        "transactions": "Zap",
+        "stations": "MapPin",
+        "users": "Users",
+        "settings": "Settings",
+        "import": "Upload",
+        "export": "Download",
+        "filter": "Filter",
+        "search": "Search",
+        "alert": "AlertTriangle",
+        "check": "CheckCircle2"
+      }
+    }
+  },
+  "universal_guidelines": {
+    "anti_ai_rules": [
+      "DO NOT use gradients for backgrounds unless explicitly requested.",
+      "DO NOT use 'Inter' font for headings. Use 'Chivo'.",
+      "DO NOT center-align text in cards or tables. Left-align is standard for data.",
+      "DO NOT use generic 'blue' (blue-500). Use the specific 'Electric Indigo' (#4F46E5).",
+      "Avoid 'Teal' (#1B93A4) as it is forbidden."
+    ],
+    "accessibility": [
+      "Ensure text contrast ratio is at least 4.5:1.",
+      "All interactive elements must have :focus-visible styles.",
+      "Use semantic HTML (main, nav, section, article, aside)."
+    ],
+    "testing": [
+      "All interactive elements MUST have a 'data-testid' attribute (kebab-case)."
+    ]
+  },
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install 'lucide-react' for icons.",
+      "Install 'recharts' for charts.",
+      "Install 'clsx' and 'tailwind-merge' for class management.",
+      "Configure 'tailwind.config.js' with the custom colors and fonts provided."
+    ],
+    "implementation_order": [
+      "1. Setup Layout (Sidebar + Header + Main Content Area).",
+      "2. Build Dashboard Overview (Metric Cards + Recent Activity).",
+      "3. Build Transactions Table (with Filters and Pagination).",
+      "4. Build Excel Import Page (Drag & Drop + Validation UI).",
+      "5. Build Login Page."
+    ]
+  }
+}
