@@ -156,6 +156,8 @@ const resources = {
       'dashboard.totalTransactions': 'Total de Transacciones',
       'dashboard.totalEnergy': 'Energía Total (kWh)',
       'dashboard.totalRevenue': 'Ingresos Totales',
+      'dashboard.paidRevenue': 'Ingresos Pagados',
+      'dashboard.unpaidRevenue': 'Ingresos Pendientes',
       'dashboard.activeStations': 'Estaciones Activas',
       'dashboard.uniqueAccounts': 'Cuentas Únicas',
       'dashboard.recentTransactions': 'Transacciones Recientes',
