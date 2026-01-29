@@ -60,8 +60,10 @@ security = HTTPBearer()
 # Lifespan for database initialization
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Initialize database tables
-    await init_db()
+    # Startup: Initialize database
+    if DATABASE_TYPE == 'postgresql':
+        await init_db()
+    
     # Create default admin user if not exists
     admin = await db.users.find_one({"email": "admin@evcharge.com"})
     if not admin:
