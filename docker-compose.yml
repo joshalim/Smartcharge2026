@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # MongoDB Database (4.2 for non-AVX CPU compatibility)
+  # MongoDB Database (4.4 for non-AVX CPU compatibility)
   mongodb:
-    image: mongo:4.2
+    image: mongo:4.4
     container_name: evcharging-mongodb
     restart: unless-stopped
     volumes:
