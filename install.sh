@@ -379,7 +379,7 @@ main() {
     install_dependencies
     install_nodejs
     install_python
-    install_mongodb
+    install_postgresql
     install_nginx
     setup_application
     
