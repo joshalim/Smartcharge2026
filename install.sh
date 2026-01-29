@@ -195,8 +195,7 @@ setup_backend() {
     # Create .env file
     JWT_SECRET=$(openssl rand -hex 32)
     cat > .env << EOF
-MONGO_URL=mongodb://localhost:27017
-DB_NAME=evcharging
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/evcharging
 JWT_SECRET=$JWT_SECRET
 EOF
     
