@@ -169,31 +169,28 @@ sudo apt install -y python3 python3-pip python3-venv
 python3 --version  # Should show 3.10+
 ```
 
-### Step 4: Install MongoDB 4.4
-
-> **Note:** MongoDB 4.4 is recommended for servers without AVX instruction set support. MongoDB 5.0+ requires AVX which is not available on older CPUs.
+### Step 4: Install PostgreSQL 15
 
 ```bash
-# Install gnupg and curl if needed
-sudo apt-get install -y gnupg curl
+# Install PostgreSQL
+sudo apt install -y postgresql postgresql-contrib
 
-# Import MongoDB 4.4 GPG key
-wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | sudo apt-key add -
+# Start and enable PostgreSQL
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
 
-# Add MongoDB 4.4 repository for Ubuntu 20.04 (Focal)
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+# Create database and user
+sudo -u postgres psql << EOF
+CREATE DATABASE evcharging;
+CREATE USER evcharging_user WITH ENCRYPTED PASSWORD 'your_secure_password';
+GRANT ALL PRIVILEGES ON DATABASE evcharging TO evcharging_user;
+\c evcharging
+GRANT ALL ON SCHEMA public TO evcharging_user;
+EOF
 
-# Install MongoDB
-sudo apt update
-sudo apt install -y mongodb-org
-
-# Start and enable MongoDB
-sudo systemctl start mongod
-sudo systemctl enable mongod
-
-# Verify MongoDB is running
-sudo systemctl status mongod
-mongod --version  # Should show v4.4.x
+# Verify PostgreSQL is running
+sudo systemctl status postgresql
+psql --version  # Should show v15.x or similar
 ```
 
 ### Step 5: Install Nginx
