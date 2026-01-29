@@ -845,6 +845,28 @@ async def delete_transaction(
         raise HTTPException(status_code=404, detail="Transaction not found")
     return {"message": "Transaction deleted successfully"}
 
+# Bulk Delete Transactions
+class BulkDeleteRequest(BaseModel):
+    ids: List[str]
+
+@api_router.post("/transactions/bulk-delete")
+async def bulk_delete_transactions(
+    request: BulkDeleteRequest,
+    current_user: User = Depends(require_role(UserRole.ADMIN))
+):
+    if not request.ids:
+        raise HTTPException(status_code=400, detail="No transaction IDs provided")
+    
+    if len(request.ids) > 500:
+        raise HTTPException(status_code=400, detail="Maximum 500 transactions can be deleted at once")
+    
+    result = await db.transactions.delete_many({"id": {"$in": request.ids}})
+    
+    return {
+        "message": f"Successfully deleted {result.deleted_count} transaction(s)",
+        "deleted_count": result.deleted_count
+    }
+
 # Excel Import
 @api_router.post("/transactions/import", response_model=ImportResult)
 async def import_transactions(
