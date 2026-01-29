@@ -121,7 +121,10 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 1. ✅ Pricing Groups feature with drag-and-drop UI
 2. ✅ User Import from Excel/CSV with group assignment
 3. ✅ Excel import case-insensitive column handling
-4. ✅ All backend tests passing (100%)
+4. ✅ Download Template button for user import
+5. ✅ Installation instructions (Docker + Ubuntu manual)
+6. ✅ **Mass deletion of selected transactions** (Bulk Delete)
+7. ✅ All backend tests passing (100%)
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation
