@@ -133,16 +133,16 @@ install_python() {
 
 # Install MongoDB
 install_mongodb() {
-    print_msg "Installing MongoDB 4.2 (compatible with non-AVX CPUs)..."
+    print_msg "Installing MongoDB 4.4 (compatible with non-AVX CPUs)..."
     
     # Install gnupg and curl
     apt-get install -y gnupg curl
     
-    # Import GPG key for MongoDB 4.2
-    wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
+    # Import GPG key for MongoDB 4.4
+    wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
     
     # Add repository for Ubuntu Focal (works for both 20.04 and compatible systems)
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.2 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.2.list
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
     
     apt update
     apt install -y mongodb-org
