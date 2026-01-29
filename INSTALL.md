@@ -169,21 +169,19 @@ sudo apt install -y python3 python3-pip python3-venv
 python3 --version  # Should show 3.10+
 ```
 
-### Step 4: Install MongoDB 7.0
+### Step 4: Install MongoDB 4.2
+
+> **Note:** MongoDB 4.2 is recommended for servers without AVX instruction set support. MongoDB 5.0+ requires AVX which is not available on older CPUs.
 
 ```bash
 # Install gnupg and curl if needed
 sudo apt-get install -y gnupg curl
 
-# Import MongoDB GPG key
-curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-   sudo gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+# Import MongoDB 4.2 GPG key
+wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
 
-# Add MongoDB repository for Ubuntu 20.04 (Focal)
-echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-
-# For Ubuntu 22.04 (Jammy), use:
-# echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+# Add MongoDB 4.2 repository for Ubuntu 20.04 (Focal)
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
 
 # Install MongoDB
 sudo apt update
@@ -195,7 +193,7 @@ sudo systemctl enable mongod
 
 # Verify MongoDB is running
 sudo systemctl status mongod
-mongod --version  # Should show v7.0.x
+mongod --version  # Should show v4.2.x
 ```
 
 ### Step 5: Install Nginx
