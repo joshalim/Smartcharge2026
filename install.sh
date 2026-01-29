@@ -117,8 +117,8 @@ install_dependencies() {
 
 # Install Node.js
 install_nodejs() {
-    print_msg "Installing Node.js 18.x..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+    print_msg "Installing Node.js 20.x LTS..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt install -y nodejs
     npm install -g yarn
     print_msg "Node.js $(node --version) installed"
@@ -133,18 +133,23 @@ install_python() {
 
 # Install MongoDB
 install_mongodb() {
-    print_msg "Installing MongoDB 6.0..."
+    print_msg "Installing MongoDB 7.0..."
+    
+    # Install gnupg and curl
+    apt-get install -y gnupg curl
     
     # Import GPG key
-    curl -fsSL https://pgp.mongodb.com/server-6.0.asc | gpg -o /usr/share/keyrings/mongodb-server-6.0.gpg --dearmor
+    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
+        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
     
     # Add repository based on Ubuntu version
     if [ "$UBUNTU_VERSION" = "22.04" ]; then
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
     elif [ "$UBUNTU_VERSION" = "20.04" ]; then
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-6.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/6.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
     else
-        print_warn "Unsupported Ubuntu version for MongoDB repo, trying generic..."
+        print_warn "Unsupported Ubuntu version for MongoDB repo, trying focal..."
+        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
     fi
     
     apt update
@@ -153,7 +158,7 @@ install_mongodb() {
     systemctl start mongod
     systemctl enable mongod
     
-    print_msg "MongoDB installed and running"
+    print_msg "MongoDB $(mongod --version | head -1) installed and running"
 }
 
 # Install Nginx
