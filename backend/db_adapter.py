@@ -9,25 +9,26 @@ from typing import Dict, List, Any, Optional
 import json
 
 from database import (
-    async_session, UserModel, TransactionModel, ChargerModel,
-    PricingRuleModel, PricingGroupModel, RFIDCardModel, 
-    RFIDHistoryModel, OCPPSessionModel, AppConfigModel
+    async_session, 
+    User, Transaction, Charger,
+    PricingRule, PricingGroup, RFIDCard, 
+    RFIDHistory, OCPPSession, AppConfig
 )
 
 # Model mapping
 MODEL_MAP = {
-    'users': UserModel,
-    'transactions': TransactionModel,
-    'chargers': ChargerModel,
-    'pricing_rules': PricingRuleModel,
-    'pricing_groups': PricingGroupModel,
-    'rfid_cards': RFIDCardModel,
-    'rfid_history': RFIDHistoryModel,
-    'ocpp_sessions': OCPPSessionModel,
-    'app_config': AppConfigModel,
-    'payu_config': AppConfigModel,
-    'sendgrid_config': AppConfigModel,
-    'invoice_webhook_config': AppConfigModel,
+    'users': User,
+    'transactions': Transaction,
+    'chargers': Charger,
+    'pricing_rules': PricingRule,
+    'pricing_groups': PricingGroup,
+    'rfid_cards': RFIDCard,
+    'rfid_history': RFIDHistory,
+    'ocpp_sessions': OCPPSession,
+    'app_config': AppConfig,
+    'payu_config': AppConfig,
+    'sendgrid_config': AppConfig,
+    'invoice_webhook_config': AppConfig,
 }
 
 
