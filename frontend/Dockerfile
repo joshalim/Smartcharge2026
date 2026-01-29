@@ -3,19 +3,23 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files (yarn.lock is optional)
+# Copy package files
 COPY package.json ./
 COPY yarn.lock* ./
 
 # Install dependencies
 RUN yarn install
 
-# Copy source code
-COPY . .
+# Copy source code and config
+COPY public/ ./public/
+COPY src/ ./src/
+COPY nginx.conf ./
+COPY .env* ./
 
 # Build argument for backend URL
 ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=$REACT_APP_BACKEND_URL
+ENV CI=false
 
 # Build production bundle
 RUN yarn build
