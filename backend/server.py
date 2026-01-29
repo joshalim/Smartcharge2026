@@ -56,8 +56,37 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 security = HTTPBearer()
 
-app = FastAPI()
+# Lifespan for database initialization
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize database tables
+    await init_db()
+    # Create default admin user if not exists
+    async with async_session() as session:
+        result = await session.execute(select(UserModel).where(UserModel.email == "admin@evcharge.com"))
+        admin = result.scalar_one_or_none()
+        if not admin:
+            password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            admin_user = UserModel(
+                id=str(uuid.uuid4()),
+                email="admin@evcharge.com",
+                name="Admin User",
+                password_hash=password_hash,
+                role="admin"
+            )
+            session.add(admin_user)
+            await session.commit()
+            logging.info("Default admin user created")
+    yield
+    # Shutdown: cleanup if needed
+
+app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
+
+# Database session dependency
+async def get_db():
+    async with async_session() as session:
+        yield session
 
 # Special pricing groups
 SPECIAL_ACCOUNTS = ["PORTERIA", "Jorge Iluminacion", "John Iluminacion"]
