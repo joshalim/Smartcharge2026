@@ -133,24 +133,16 @@ install_python() {
 
 # Install MongoDB
 install_mongodb() {
-    print_msg "Installing MongoDB 7.0..."
+    print_msg "Installing MongoDB 4.2 (compatible with non-AVX CPUs)..."
     
     # Install gnupg and curl
     apt-get install -y gnupg curl
     
-    # Import GPG key
-    curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
-        gpg -o /usr/share/keyrings/mongodb-server-7.0.gpg --dearmor
+    # Import GPG key for MongoDB 4.2
+    wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
     
-    # Add repository based on Ubuntu version
-    if [ "$UBUNTU_VERSION" = "22.04" ]; then
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    elif [ "$UBUNTU_VERSION" = "20.04" ]; then
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    else
-        print_warn "Unsupported Ubuntu version for MongoDB repo, trying focal..."
-        echo "deb [ arch=amd64,arm64 signed-by=/usr/share/keyrings/mongodb-server-7.0.gpg ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-    fi
+    # Add repository for Ubuntu Focal (works for both 20.04 and compatible systems)
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.2 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.2.list
     
     apt update
     apt install -y mongodb-org
