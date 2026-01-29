@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # MongoDB Database
+  # MongoDB Database (4.2 for non-AVX CPU compatibility)
   mongodb:
-    image: mongo:7.0
+    image: mongo:4.2
     container_name: evcharging-mongodb
     restart: unless-stopped
     volumes:
@@ -11,7 +11,7 @@ services:
     networks:
       - evcharging-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
       interval: 30s
       timeout: 10s
       retries: 3
