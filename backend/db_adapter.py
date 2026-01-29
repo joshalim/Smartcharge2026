@@ -77,8 +77,8 @@ class PostgresCollection:
             
             return doc
     
-    async def find(self, filter_dict: dict = None, projection: dict = None):
-        """Find multiple documents - returns async generator"""
+    def find(self, filter_dict: dict = None, projection: dict = None):
+        """Find multiple documents - returns cursor (not async)"""
         return PostgresCursor(self.model, filter_dict, projection)
     
     async def insert_one(self, document: dict):
