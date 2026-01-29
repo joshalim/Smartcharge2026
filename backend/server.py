@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 import hashlib
@@ -26,12 +27,20 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from contextlib import asynccontextmanager
 
-# Import PostgreSQL database adapter (MongoDB-compatible interface)
-from database import init_db
-from db_adapter import db
-
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+# Database configuration - supports both MongoDB and PostgreSQL
+DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'mongodb')
+
+if DATABASE_TYPE == 'postgresql':
+    from database import init_db
+    from db_adapter import db
+else:
+    # MongoDB (default for preview environment)
+    mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+    client = AsyncIOMotorClient(mongo_url)
+    db = client[os.environ.get('DB_NAME', 'evcharging')]
 
 SECRET_KEY = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
