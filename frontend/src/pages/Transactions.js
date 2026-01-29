@@ -199,6 +199,21 @@ function Transactions() {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedTxs.length === 0) return;
+    if (!window.confirm(`Are you sure you want to DELETE ${selectedTxs.length} transaction(s)? This action cannot be undone.`)) return;
+
+    try {
+      await axios.post(`${API}/transactions/bulk-delete`, { ids: selectedTxs });
+      fetchTransactions();
+      setShowBulkActions(false);
+      setSelectedTxs([]);
+    } catch (error) {
+      console.error('Failed to bulk delete:', error);
+      alert(error.response?.data?.detail || 'Failed to delete transactions');
+    }
+  };
+
   const exportSelected = () => {
     const selectedTransactions = transactions.filter((tx) => selectedTxs.includes(tx.id));
     const headers = ['Tx ID', 'Account', 'Station', 'Connector', 'Type', 'Start Date', 'Start Time', 'End Date', 'End Time', 'Duration', 'Energy (kWh)', 'Cost (COP)', 'Status', 'Payment Type', 'Payment Date'];
