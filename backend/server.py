@@ -112,7 +112,7 @@ class User(BaseModel):
     name: str
     role: str
     pricing_group_id: Optional[str] = None
-    created_at: str
+    created_at: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
