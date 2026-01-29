@@ -1,17 +1,21 @@
 version: '3.8'
 
 services:
-  # MongoDB Database (4.4 for non-AVX CPU compatibility)
-  mongodb:
-    image: mongo:4.4
-    container_name: evcharging-mongodb
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: evcharging-postgres
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: evcharging
     volumes:
-      - mongodb_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - evcharging-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -24,11 +28,10 @@ services:
     container_name: evcharging-backend
     restart: unless-stopped
     environment:
-      - MONGO_URL=mongodb://mongodb:27017
-      - DB_NAME=evcharging
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/evcharging
       - JWT_SECRET=${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
     networks:
       - evcharging-network
@@ -60,5 +63,5 @@ networks:
     driver: bridge
 
 volumes:
-  mongodb_data:
+  postgres_data:
     driver: local
