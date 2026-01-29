@@ -131,26 +131,23 @@ install_python() {
     print_msg "Python $(python3 --version) installed"
 }
 
-# Install MongoDB
-install_mongodb() {
-    print_msg "Installing MongoDB 4.4 (compatible with non-AVX CPUs)..."
+# Install PostgreSQL
+install_postgresql() {
+    print_msg "Installing PostgreSQL 15..."
     
-    # Install gnupg and curl
-    apt-get install -y gnupg curl
+    # Install PostgreSQL
+    apt install -y postgresql postgresql-contrib
     
-    # Import GPG key for MongoDB 4.4
-    wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
+    systemctl start postgresql
+    systemctl enable postgresql
     
-    # Add repository for Ubuntu Focal (works for both 20.04 and compatible systems)
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+    # Create database and user
+    sudo -u postgres psql << EOF
+CREATE DATABASE evcharging;
+ALTER USER postgres PASSWORD 'postgres';
+EOF
     
-    apt update
-    apt install -y mongodb-org
-    
-    systemctl start mongod
-    systemctl enable mongod
-    
-    print_msg "MongoDB $(mongod --version | head -1) installed and running"
+    print_msg "PostgreSQL $(psql --version) installed and running"
 }
 
 # Install Nginx
