@@ -325,9 +325,9 @@ function Transactions() {
       </div>
 
       {showBulkActions && selectedTxs.length > 0 && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-xl p-6" data-testid="bulk-actions-panel">
+        <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6" data-testid="bulk-actions-panel">
           <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
-            Bulk Actions ({selectedTxs.length} transactions)
+            Bulk Actions ({selectedTxs.length} selected)
           </h3>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
@@ -345,18 +345,31 @@ function Transactions() {
             <button
               onClick={handleBulkMarkAsPaid}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors font-medium"
+              data-testid="bulk-mark-paid-btn"
             >
               Mark as PAID
             </button>
             <button
               onClick={exportSelected}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium"
+              data-testid="bulk-export-btn"
             >
               Export Selected
             </button>
             <button
+              onClick={handleBulkDelete}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-md transition-colors font-medium"
+              data-testid="bulk-delete-btn"
+            >
+              <span className="flex items-center gap-2">
+                <Trash2 className="w-4 h-4" />
+                Delete Selected
+              </span>
+            </button>
+            <button
               onClick={() => setSelectedTxs([])}
               className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors font-medium"
+              data-testid="clear-selection-btn"
             >
               Clear Selection
             </button>
