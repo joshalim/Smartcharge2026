@@ -2,9 +2,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, or_, and_
-from sqlalchemy.orm import selectinload
 import os
 import logging
 import hashlib
@@ -29,14 +26,9 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from contextlib import asynccontextmanager
 
-# Import database models and session
-from database import (
-    engine, async_session, init_db, Base,
-    User as UserModel, Transaction as TransactionModel, Charger as ChargerModel,
-    PricingRule as PricingRuleModel, PricingGroup as PricingGroupModel,
-    RFIDCard as RFIDCardModel, RFIDHistory as RFIDHistoryModel,
-    OCPPSession as OCPPSessionModel, AppConfig as AppConfigModel
-)
+# Import PostgreSQL database adapter (MongoDB-compatible interface)
+from database import init_db
+from db_adapter import db
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
