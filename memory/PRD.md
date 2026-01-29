@@ -81,8 +81,8 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 
 ## Technical Stack
 - **Frontend**: React, Tailwind CSS, Shadcn/UI, i18next, axios, @dnd-kit (drag-and-drop)
-- **Backend**: FastAPI (Python), PyJWT, Pydantic, openpyxl, reportlab, httpx, sendgrid
-- **Database**: MongoDB
+- **Backend**: FastAPI (Python), PyJWT, Pydantic, SQLAlchemy, asyncpg, openpyxl, reportlab, httpx, sendgrid
+- **Database**: PostgreSQL 15
 - **Payment**: PayU Colombia (sandbox)
 - **Email**: SendGrid
 
