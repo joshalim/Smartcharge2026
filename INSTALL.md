@@ -1,11 +1,23 @@
 # EV Charging Management System - Self-Hosted Installation Guide
 
-This guide covers deploying the Smart Charge EV Charging Management System on a self-hosted Ubuntu server.
+This guide covers deploying the Smart Charge EV Charging Management System on self-hosted servers.
 
 ## Deployment Options
 
-1. **[Docker Compose](#docker-deployment)** (Recommended) - Fastest setup
-2. **[Manual Installation](#manual-installation)** - Full control over setup
+| Platform | Guide | Best For |
+|----------|-------|----------|
+| **Docker** | [Docker Compose](#docker-deployment) | Quick setup, any OS |
+| **Windows Server 2016** | [INSTALL_WINDOWS.md](INSTALL_WINDOWS.md) | Windows environments |
+| **Ubuntu Linux** | [Manual Installation](#manual-installation) | Linux servers |
+
+## Software Requirements
+
+| Component | Windows | Linux | Docker |
+|-----------|---------|-------|--------|
+| Node.js | v25.5.0 | v20.x | v20-alpine |
+| NPM | v11.8.0 | v10.x | included |
+| Python | v3.14 | v3.11+ | v3.11-slim |
+| PostgreSQL | v16 | v15+ | v16-alpine |
 
 ---
 
