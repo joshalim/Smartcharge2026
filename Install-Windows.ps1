@@ -7,7 +7,7 @@
 #Requires -RunAsAdministrator
 
 param(
-    [string]$AppDir = "C:\Apps\ev-charging-management",
+    [string]$AppDir = "C:\Apps\Smartcharge2026",
     [string]$PostgresPassword = "",
     [switch]$SkipServices
 )
