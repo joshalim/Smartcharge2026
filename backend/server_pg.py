@@ -640,6 +640,7 @@ async def create_pricing_group(group: PricingGroupCreate, current_user: dict = D
     return PricingGroup(**new_group, user_count=0)
 
 @api_router.put("/pricing-groups/{group_id}")
+@api_router.patch("/pricing-groups/{group_id}")
 async def update_pricing_group(group_id: str, data: PricingGroupUpdate, current_user: dict = Depends(require_admin)):
     group = await db.pricing_groups.find_one({"id": group_id})
     if not group:
