@@ -36,11 +36,18 @@ DATABASE_TYPE = os.environ.get('DATABASE_TYPE', 'mongodb')
 if DATABASE_TYPE == 'postgresql':
     from database import init_db
     from db_adapter import db
+    client = None  # No MongoDB client needed
 else:
     # MongoDB (default for preview environment)
     mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[os.environ.get('DB_NAME', 'evcharging')]
+    try:
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
+        db = client[os.environ.get('DB_NAME', 'evcharging')]
+    except Exception as e:
+        print(f"Warning: Could not connect to MongoDB: {e}")
+        # Fallback - will fail if MongoDB operations are attempted
+        client = None
+        db = None
 
 SECRET_KEY = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 ALGORITHM = "HS256"
