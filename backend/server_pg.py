@@ -572,6 +572,38 @@ async def delete_charger(charger_id: str, current_user: dict = Depends(require_a
         raise HTTPException(status_code=404, detail="Charger not found")
     return {"message": "Charger deleted"}
 
+# ==================== Pricing Rules Endpoints ====================
+
+@api_router.get("/pricing")
+async def get_pricing_rules(current_user: dict = Depends(require_admin)):
+    rules = await db.pricing_rules.find({})
+    return [PricingRule(
+        id=r["id"],
+        account=r.get("account", ""),
+        connector=r.get("connector", ""),
+        price_per_kwh=r.get("price_per_kwh", 0),
+        created_at=str(r.get("created_at", ""))
+    ) for r in rules]
+
+@api_router.post("/pricing")
+async def create_pricing_rule(rule: PricingRuleCreate, current_user: dict = Depends(require_admin)):
+    new_rule = {
+        "id": str(uuid.uuid4()),
+        "account": rule.account,
+        "connector": rule.connector,
+        "price_per_kwh": rule.price_per_kwh,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.pricing_rules.insert_one(new_rule)
+    return PricingRule(**new_rule)
+
+@api_router.delete("/pricing/{pricing_id}")
+async def delete_pricing_rule(pricing_id: str, current_user: dict = Depends(require_admin)):
+    result = await db.pricing_rules.delete_one({"id": pricing_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pricing rule not found")
+    return {"message": "Pricing rule deleted"}
+
 # ==================== Pricing Groups Endpoints ====================
 
 @api_router.get("/pricing-groups")
