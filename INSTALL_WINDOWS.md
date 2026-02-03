@@ -302,7 +302,7 @@ Create `C:\inetpub\wwwroot\web.config`:
 
 ---
 
-## Step 11: Verify Installation
+## Step 12: Verify Installation
 
 ### Test Backend
 ```cmd
