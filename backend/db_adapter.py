@@ -146,6 +146,29 @@ class PostgresCollection:
             
             return type('DeleteResult', (), {'deleted_count': result.rowcount})()
     
+    async def update_many(self, filter_dict: dict, update_dict: dict):
+        """Update multiple documents"""
+        async with async_session() as session:
+            # Handle $set operator
+            if '$set' in update_dict:
+                update_data = update_dict['$set']
+            else:
+                update_data = update_dict
+            
+            query = update(self.model)
+            for key, value in filter_dict.items():
+                if hasattr(self.model, key):
+                    query = query.where(getattr(self.model, key) == value)
+            
+            query = query.values(**update_data)
+            result = await session.execute(query)
+            await session.commit()
+            
+            return type('UpdateResult', (), {
+                'modified_count': result.rowcount,
+                'matched_count': result.rowcount
+            })()
+    
     async def count_documents(self, filter_dict: dict = None) -> int:
         """Count documents matching filter"""
         async with async_session() as session:
