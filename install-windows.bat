@@ -23,7 +23,7 @@ if %errorlevel% neq 0 (
 )
 
 REM Configuration
-set APP_DIR=C:\Apps\ev-charging-management
+set APP_DIR=C:\Apps\Smartcharge2026
 set PYTHON_PATH=C:\Python314
 set NODE_PATH=C:\Program Files\nodejs
 set PG_PATH=C:\Program Files\PostgreSQL\16
