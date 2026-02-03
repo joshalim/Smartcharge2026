@@ -1,12 +1,85 @@
 @echo off
-echo ============================================
-echo SmartCharge Backend Startup (PostgreSQL)
-echo ============================================
+setlocal enabledelayedexpansion
 
+echo ============================================
+echo   SmartCharge Backend Startup Script
+echo ============================================
+echo.
+
+:: Set working directory
 cd /d C:\Apps\Smartcharge2026\backend
+
+:: Check if virtual environment exists
+if not exist "venv\Scripts\activate.bat" (
+    echo [ERROR] Virtual environment not found!
+    echo Please run: python -m venv venv
+    echo Then: venv\Scripts\activate ^&^& pip install -r requirements.txt
+    pause
+    exit /b 1
+)
+
+:: Activate virtual environment
+echo [1/4] Activating virtual environment...
 call venv\Scripts\activate.bat
 
-echo Starting backend server...
-python -m uvicorn server_pg:app --host 0.0.0.0 --port 8001
+:: Check if .env file exists
+if not exist ".env" (
+    echo [ERROR] .env file not found!
+    echo Creating default .env file...
+    (
+        echo DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/evcharging
+        echo DATABASE_TYPE=postgresql
+        echo JWT_SECRET=your-secret-key-change-in-production
+        echo CORS_ORIGINS=*
+    ) > .env
+    echo [WARNING] Please edit .env with your PostgreSQL password!
+    pause
+)
 
+:: Check if DATABASE_TYPE is set to postgresql
+findstr /C:"DATABASE_TYPE=postgresql" .env >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] DATABASE_TYPE=postgresql not found in .env
+    echo Adding DATABASE_TYPE=postgresql to .env...
+    echo DATABASE_TYPE=postgresql >> .env
+    echo [OK] DATABASE_TYPE added
+)
+
+echo [2/4] Environment configuration:
+echo      - Database: PostgreSQL
+echo      - Server: server.py (full version)
+echo.
+
+:: Check if PostgreSQL is accessible
+echo [3/4] Testing database connection...
+python -c "import asyncio; import asyncpg; from dotenv import load_dotenv; import os; load_dotenv(); url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://'); asyncio.run(asyncpg.connect(url, timeout=5))" 2>nul
+if errorlevel 1 (
+    echo [WARNING] Could not connect to PostgreSQL database.
+    echo Please check:
+    echo   1. PostgreSQL service is running
+    echo   2. DATABASE_URL in .env is correct
+    echo   3. Database 'evcharging' exists
+    echo.
+    echo Continuing anyway...
+) else (
+    echo [OK] Database connection successful
+)
+
+echo.
+echo [4/4] Starting backend server...
+echo ============================================
+echo   Server: server.py
+echo   Host:   0.0.0.0
+echo   Port:   8001
+echo ============================================
+echo.
+echo Press Ctrl+C to stop the server
+echo.
+
+:: Start the FULL server (server.py), NOT server_simple.py
+python -m uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+
+:: If we get here, server stopped
+echo.
+echo Server stopped.
 pause
