@@ -1,17 +1,19 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL 16 Database
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: evcharging-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: evcharging
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
       - evcharging-network
     healthcheck:
@@ -28,15 +30,18 @@ services:
     container_name: evcharging-backend
     restart: unless-stopped
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/evcharging
+      - DATABASE_URL=postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/evcharging
+      - DATABASE_TYPE=postgresql
       - JWT_SECRET=${JWT_SECRET:-change-this-to-a-secure-secret-in-production}
     depends_on:
       postgres:
         condition: service_healthy
+    ports:
+      - "8001:8001"
     networks:
       - evcharging-network
     healthcheck:
-      test: curl -f http://localhost:8001/api/health || exit 1
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -47,11 +52,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-http://localhost}
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-http://localhost:8001}
     container_name: evcharging-frontend
     restart: unless-stopped
     ports:
       - "80:80"
+      - "3000:80"
     depends_on:
       backend:
         condition: service_healthy
