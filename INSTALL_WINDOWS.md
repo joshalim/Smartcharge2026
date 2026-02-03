@@ -250,7 +250,23 @@ New-NetFirewallRule -DisplayName "PostgreSQL" -Direction Inbound -Port 5432 -Pro
 
 ---
 
-## Step 10: Setup IIS as Reverse Proxy (Optional but Recommended)
+## Step 10: Create Admin User
+
+Before you can login, you must create the admin user in the database:
+
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+.\venv\Scripts\activate
+python create_admin.py
+```
+
+Or double-click: `C:\Apps\Smartcharge2026\backend\create-admin.bat`
+
+This will create the default admin user and display the login credentials.
+
+---
+
+## Step 11: Setup IIS as Reverse Proxy (Optional but Recommended)
 
 ### Install IIS
 1. Open Server Manager
