@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartCharge Login Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 { color: #e65100; }
+        h2 { color: #333; border-bottom: 2px solid #e65100; padding-bottom: 10px; }
+        .success { color: #2e7d32; background: #e8f5e9; padding: 10px; border-radius: 4px; }
+        .error { color: #c62828; background: #ffebee; padding: 10px; border-radius: 4px; }
+        .info { color: #1565c0; background: #e3f2fd; padding: 10px; border-radius: 4px; }
+        button {
+            background: #e65100;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover { background: #bf360c; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        pre {
+            background: #263238;
+            color: #aed581;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        #results { margin-top: 20px; }
+        .step { margin: 10px 0; padding: 10px; border-left: 4px solid #e65100; background: #fff3e0; }
+    </style>
+</head>
+<body>
+    <h1>🔌 SmartCharge Login Diagnostic</h1>
+    <p>This tool tests the API connection directly from your browser.</p>
+
+    <div class="card">
+        <h2>Configuration</h2>
+        <label>Backend URL:</label>
+        <input type="text" id="backendUrl" value="http://localhost:8001" placeholder="http://localhost:8001">
+        <label>Email:</label>
+        <input type="email" id="email" value="admin@evcharge.com">
+        <label>Password:</label>
+        <input type="password" id="password" value="admin123">
+    </div>
+
+    <div class="card">
+        <h2>Tests</h2>
+        <button onclick="testHealth()">1. Test Health Endpoint</button>
+        <button onclick="testLogin()">2. Test Login</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+    </div>
+
+    <div class="card" id="results">
+        <h2>Results</h2>
+        <div id="output">Click a test button to begin...</div>
+    </div>
+
+    <div class="card">
+        <h2>Troubleshooting Guide</h2>
+        <div class="step"><strong>CORS Error:</strong> Backend needs CORS_ORIGINS=* in .env</div>
+        <div class="step"><strong>Connection Refused:</strong> Backend service not running on port 8001</div>
+        <div class="step"><strong>401 Unauthorized:</strong> Wrong credentials or user doesn't exist</div>
+        <div class="step"><strong>Network Error:</strong> Check firewall, or backend URL is wrong</div>
+    </div>
+
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = type;
+            div.innerHTML = message;
+            div.style.marginBottom = '10px';
+            output.appendChild(div);
+        }
+
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+
+        function getConfig() {
+            return {
+                url: document.getElementById('backendUrl').value.replace(/\/$/, ''),
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value
+            };
+        }
+
+        async function testHealth() {
+            clearOutput();
+            const config = getConfig();
+            log(`<strong>Testing:</strong> ${config.url}/api/health`, 'info');
+            
+            try {
+                const response = await fetch(`${config.url}/api/health`, {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                log(`<strong>Status:</strong> ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`<strong>Response:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
+                } else {
+                    const text = await response.text();
+                    log(`<strong>Error Response:</strong><pre>${text}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`<strong>❌ Network Error:</strong> ${error.message}`, 'error');
+                log(`<strong>Possible causes:</strong><br>
+                    - Backend not running<br>
+                    - Wrong URL<br>
+                    - Firewall blocking port 8001<br>
+                    - CORS blocking the request`, 'info');
+            }
+        }
+
+        async function testLogin() {
+            clearOutput();
+            const config = getConfig();
+            log(`<strong>Testing Login:</strong> ${config.url}/api/auth/login`, 'info');
+            log(`<strong>Email:</strong> ${config.email}`, 'info');
+            
+            try {
+                const response = await fetch(`${config.url}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: config.email,
+                        password: config.password
+                    })
+                });
+                
+                log(`<strong>Status:</strong> ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`<strong>✅ LOGIN SUCCESSFUL!</strong>`, 'success');
+                    log(`<strong>Token:</strong> ${data.access_token?.substring(0, 50)}...`, 'success');
+                    log(`<strong>User:</strong><pre>${JSON.stringify(data.user, null, 2)}</pre>`, 'success');
+                    
+                    // Store token and test /api/auth/me
+                    log(`<br><strong>Testing /api/auth/me with token...</strong>`, 'info');
+                    const meResponse = await fetch(`${config.url}/api/auth/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${data.access_token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (meResponse.ok) {
+                        const meData = await meResponse.json();
+                        log(`<strong>✅ Token validation successful!</strong><pre>${JSON.stringify(meData, null, 2)}</pre>`, 'success');
+                    } else {
+                        log(`<strong>❌ Token validation failed:</strong> ${meResponse.status}`, 'error');
+                    }
+                } else {
+                    log(`<strong>❌ LOGIN FAILED!</strong>`, 'error');
+                    log(`<strong>Error:</strong><pre>${JSON.stringify(data, null, 2)}</pre>`, 'error');
+                }
+            } catch (error) {
+                log(`<strong>❌ Network Error:</strong> ${error.message}`, 'error');
+                
+                // Check if it's a CORS error
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    log(`<strong>⚠️ This is likely a CORS or network connectivity issue.</strong><br>
+                        Check:<br>
+                        1. Is the backend running? (Check services.msc)<br>
+                        2. Is CORS_ORIGINS=* in backend/.env?<br>
+                        3. Is firewall allowing port 8001?<br>
+                        4. Try opening ${config.url}/api/health directly in browser`, 'info');
+                }
+            }
+        }
+
+        async function runAllTests() {
+            clearOutput();
+            log('<h3>Running all tests...</h3>', 'info');
+            
+            // Test 1: Health
+            await testHealth();
+            
+            log('<hr>', 'info');
+            
+            // Test 2: Login  
+            await testLogin();
+        }
+
+        // Check what URL the React app is using
+        log(`<strong>Current page URL:</strong> ${window.location.href}`, 'info');
+    </script>
+</body>
+</html>
