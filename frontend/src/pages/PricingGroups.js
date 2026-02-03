@@ -509,7 +509,7 @@ function PricingGroups() {
                     <input
                       type="number"
                       min="0"
-                      step="100"
+                      step="50"
                       value={groupForm.connector_pricing.CCS2}
                       onChange={(e) => setGroupForm({
                         ...groupForm, 
@@ -524,7 +524,7 @@ function PricingGroups() {
                     <input
                       type="number"
                       min="0"
-                      step="100"
+                      step="50"
                       value={groupForm.connector_pricing.CHADEMO}
                       onChange={(e) => setGroupForm({
                         ...groupForm, 
@@ -539,7 +539,7 @@ function PricingGroups() {
                     <input
                       type="number"
                       min="0"
-                      step="100"
+                      step="50"
                       value={groupForm.connector_pricing.J1772}
                       onChange={(e) => setGroupForm({
                         ...groupForm, 
