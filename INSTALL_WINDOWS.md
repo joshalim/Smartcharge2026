@@ -111,8 +111,8 @@ CREATE DATABASE evcharging;
 cd C:\
 mkdir Apps
 cd Apps
-git clone https://github.com/YOUR_USERNAME/ev-charging-management.git
-cd ev-charging-management
+git clone https://github.com/YOUR_USERNAME/Smartcharge2026.git
+cd Smartcharge2026
 ```
 
 ---
@@ -189,8 +189,8 @@ yarn build
 C:\nssm\win64\nssm.exe install EVChargingBackend
 ```
 In the GUI:
-- **Path:** `C:\Apps\ev-charging-management\backend\venv\Scripts\python.exe`
-- **Startup directory:** `C:\Apps\ev-charging-management\backend`
+- **Path:** `C:\Apps\Smartcharge2026\backend\venv\Scripts\python.exe`
+- **Startup directory:** `C:\Apps\Smartcharge2026\backend`
 - **Arguments:** `-m uvicorn server:app --host 0.0.0.0 --port 8001`
 
 Click "Install service"
@@ -206,7 +206,7 @@ C:\nssm\win64\nssm.exe install EVChargingFrontend
 ```
 In the GUI:
 - **Path:** `C:\Program Files\nodejs\serve.cmd`
-- **Startup directory:** `C:\Apps\ev-charging-management\frontend`
+- **Startup directory:** `C:\Apps\Smartcharge2026\frontend`
 - **Arguments:** `-s build -l 3000`
 
 Click "Install service"
@@ -219,16 +219,16 @@ net start EVChargingFrontend
 
 ### Option B: Using PowerShell Scripts
 
-Create `C:\Apps\ev-charging-management\start-backend.ps1`:
+Create `C:\Apps\Smartcharge2026\start-backend.ps1`:
 ```powershell
-Set-Location "C:\Apps\ev-charging-management\backend"
+Set-Location "C:\Apps\Smartcharge2026\backend"
 & ".\venv\Scripts\activate.ps1"
 python -m uvicorn server:app --host 0.0.0.0 --port 8001
 ```
 
-Create `C:\Apps\ev-charging-management\start-frontend.ps1`:
+Create `C:\Apps\Smartcharge2026\start-frontend.ps1`:
 ```powershell
-Set-Location "C:\Apps\ev-charging-management\frontend"
+Set-Location "C:\Apps\Smartcharge2026\frontend"
 npx serve -s build -l 3000
 ```
 
@@ -308,7 +308,7 @@ Open browser: http://localhost:3000
 
 ### Backend won't start
 ```cmd
-cd C:\Apps\ev-charging-management\backend
+cd C:\Apps\Smartcharge2026\backend
 venv\Scripts\activate
 python -c "import asyncpg; print('asyncpg OK')"
 python -c "from sqlalchemy import create_engine; print('SQLAlchemy OK')"
@@ -342,7 +342,7 @@ taskkill /PID <PID> /F
 ## Updating the Application
 
 ```cmd
-cd C:\Apps\ev-charging-management
+cd C:\Apps\Smartcharge2026
 
 :: Stop services
 net stop EVChargingBackend
@@ -403,4 +403,4 @@ Schedule this script to run daily via Task Scheduler.
 ## Support
 
 For issues and questions:
-- GitHub Issues: https://github.com/YOUR_USERNAME/ev-charging-management/issues
+- GitHub Issues: https://github.com/YOUR_USERNAME/Smartcharge2026/issues
