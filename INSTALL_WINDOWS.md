@@ -322,6 +322,34 @@ Open browser: http://localhost:3000
 
 ## Troubleshooting
 
+### ⚠️ Login Not Working (Most Common Issue)
+
+**Symptom:** Backend diagnostic passes but cannot login from browser.
+
+**Cause:** The frontend was built with the wrong `REACT_APP_BACKEND_URL`. React environment variables are baked into the build at compile time.
+
+**Fix:**
+1. Open `C:\Apps\Smartcharge2026\frontend\.env`
+2. Set the correct backend URL:
+   ```env
+   REACT_APP_BACKEND_URL=http://localhost:8001
+   ```
+3. **Rebuild the frontend:**
+   ```cmd
+   cd C:\Apps\Smartcharge2026\frontend
+   yarn build
+   ```
+4. Restart the frontend service:
+   ```cmd
+   net stop EVChargingFrontend
+   net start EVChargingFrontend
+   ```
+
+Or run the helper script:
+```cmd
+C:\Apps\Smartcharge2026\frontend\rebuild.bat
+```
+
 ### Backend won't start
 ```cmd
 cd C:\Apps\Smartcharge2026\backend
@@ -352,6 +380,12 @@ netstat -ano | findstr :8001
 netstat -ano | findstr :3000
 taskkill /PID <PID> /F
 ```
+
+### Clear Browser Cache
+If login still fails after rebuilding:
+1. Press `Ctrl + Shift + Delete` in your browser
+2. Clear cached images and files
+3. Reload the page with `Ctrl + F5`
 
 ---
 
