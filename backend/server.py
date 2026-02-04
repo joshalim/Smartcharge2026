@@ -64,27 +64,49 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 
 security = HTTPBearer()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+async def ensure_admin_user():
+    """Create default admin user if not exists - called on every startup"""
+    try:
+        logger.info("Checking for admin user...")
+        admin = await db.users.find_one({"email": "admin@evcharge.com"})
+        if not admin:
+            logger.info("Admin user not found, creating...")
+            password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()),
+                "email": "admin@evcharge.com",
+                "name": "Admin User",
+                "password_hash": password_hash,
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info("✓ Default admin user created: admin@evcharge.com / admin123")
+        else:
+            logger.info(f"✓ Admin user exists: {admin.get('email')}")
+    except Exception as e:
+        logger.error(f"Error ensuring admin user: {e}")
+
 # Lifespan for database initialization
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize database
+    logger.info("Starting SmartCharge server...")
     if DATABASE_TYPE == 'postgresql':
+        logger.info("Initializing PostgreSQL database...")
         await init_db()
+        logger.info("✓ PostgreSQL initialized")
     
     # Create default admin user if not exists
-    admin = await db.users.find_one({"email": "admin@evcharge.com"})
-    if not admin:
-        password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        await db.users.insert_one({
-            "id": str(uuid.uuid4()),
-            "email": "admin@evcharge.com",
-            "name": "Admin User",
-            "password_hash": password_hash,
-            "role": "admin"
-        })
-        logging.info("Default admin user created")
+    await ensure_admin_user()
+    
+    logger.info("✓ Server startup complete")
     yield
     # Shutdown: cleanup if needed
+    logger.info("Server shutting down...")
 
 app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
