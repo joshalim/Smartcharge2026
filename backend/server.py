@@ -579,6 +579,56 @@ async def get_pricing(account: str, connector: str, connector_type: Optional[str
     
     return 500.0
 
+# Health and Setup Routes
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint - also verifies admin user exists"""
+    admin_exists = False
+    try:
+        admin = await db.users.find_one({"email": "admin@evcharge.com"})
+        admin_exists = admin is not None
+    except:
+        pass
+    
+    return {
+        "status": "healthy",
+        "database": DATABASE_TYPE,
+        "admin_exists": admin_exists,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+@api_router.post("/setup/admin")
+async def setup_admin():
+    """Create or reset the default admin user - no authentication required"""
+    try:
+        admin = await db.users.find_one({"email": "admin@evcharge.com"})
+        
+        if admin:
+            # Reset password
+            new_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            await db.users.update_one(
+                {"email": "admin@evcharge.com"},
+                {"$set": {"password_hash": new_hash}}
+            )
+            logger.info("Admin password reset to admin123")
+            return {"message": "Admin password reset to admin123", "email": "admin@evcharge.com"}
+        else:
+            # Create admin
+            password_hash = bcrypt.hashpw("admin123".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            await db.users.insert_one({
+                "id": str(uuid.uuid4()),
+                "email": "admin@evcharge.com",
+                "name": "Admin User",
+                "password_hash": password_hash,
+                "role": "admin",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            logger.info("Admin user created: admin@evcharge.com / admin123")
+            return {"message": "Admin user created", "email": "admin@evcharge.com", "password": "admin123"}
+    except Exception as e:
+        logger.error(f"Error in setup_admin: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Auth Routes
 @api_router.post("/auth/register", response_model=User)
 async def register(user_data: UserCreate):
