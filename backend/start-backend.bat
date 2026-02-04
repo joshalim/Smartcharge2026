@@ -19,7 +19,7 @@ if not exist "venv\Scripts\activate.bat" (
 )
 
 :: Activate virtual environment
-echo [1/4] Activating virtual environment...
+echo [1/5] Activating virtual environment...
 call venv\Scripts\activate.bat
 
 :: Check if .env file exists
@@ -45,13 +45,13 @@ if errorlevel 1 (
     echo [OK] DATABASE_TYPE added
 )
 
-echo [2/4] Environment configuration:
+echo [2/5] Environment configuration:
 echo      - Database: PostgreSQL
 echo      - Server: server.py (full version)
 echo.
 
 :: Check if PostgreSQL is accessible
-echo [3/4] Testing database connection...
+echo [3/5] Testing database connection...
 python -c "import asyncio; import asyncpg; from dotenv import load_dotenv; import os; load_dotenv(); url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://'); asyncio.run(asyncpg.connect(url, timeout=5))" 2>nul
 if errorlevel 1 (
     echo [WARNING] Could not connect to PostgreSQL database.
@@ -66,18 +66,39 @@ if errorlevel 1 (
 )
 
 echo.
-echo [4/4] Starting backend server...
+echo [4/5] Creating/verifying admin user...
+python -c "import asyncio; import bcrypt; import asyncpg; import uuid; from dotenv import load_dotenv; import os; load_dotenv(); url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://'); exec('''
+async def setup():
+    conn = await asyncpg.connect(url, timeout=5)
+    admin = await conn.fetchrow(\"SELECT * FROM users WHERE email = $1\", \"admin@evcharge.com\")
+    if not admin:
+        pwd = bcrypt.hashpw(b\"admin123\", bcrypt.gensalt()).decode()
+        await conn.execute(\"INSERT INTO users (id, email, name, password_hash, role) VALUES ($1, $2, $3, $4, $5)\", str(uuid.uuid4()), \"admin@evcharge.com\", \"Admin User\", pwd, \"admin\")
+        print(\"[OK] Admin user created: admin@evcharge.com / admin123\")
+    else:
+        print(\"[OK] Admin user exists: \" + admin[\"email\"])
+    await conn.close()
+asyncio.run(setup())
+''')" 2>nul
+if errorlevel 1 (
+    echo [WARNING] Could not verify admin user - will be created on server start
+)
+
+echo.
+echo [5/5] Starting backend server...
 echo ============================================
 echo   Server: server.py
 echo   Host:   0.0.0.0
 echo   Port:   8001
 echo ============================================
 echo.
+echo   Admin Login: admin@evcharge.com / admin123
+echo.
 echo Press Ctrl+C to stop the server
 echo.
 
 :: Start the FULL server (server.py), NOT server_simple.py
-python -m uvicorn server:app --host 0.0.0.0 --port 8001 --reload
+python -m uvicorn server:app --host 0.0.0.0 --port 8001
 
 :: If we get here, server stopped
 echo.
