@@ -178,58 +178,56 @@ yarn build
 
 ## Step 8: Install Windows Services
 
-### Option A: Using NSSM (Recommended)
+### Option A: Automatic Installation (Recommended)
+
+Run the service installer as Administrator:
+```cmd
+cd C:\Apps\Smartcharge2026
+install-services.bat
+```
+
+This will automatically:
+- Install backend service (EVChargingBackend)
+- Install frontend service (EVChargingFrontend)
+- Configure logging to `C:\Apps\Smartcharge2026\logs\`
+- Start both services
+
+### Option B: Manual Testing First
+
+Before installing services, test the backend manually:
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+start-backend.bat
+```
+
+This script will:
+- Check your `.env` configuration
+- Test database connectivity
+- Start the server with the correct settings
+
+### Option C: Using NSSM Manually
 
 1. Download NSSM from https://nssm.cc/download
 2. Extract to `C:\nssm`
-3. Add to PATH or use full path
 
 #### Install Backend Service
 ```cmd
-C:\nssm\win64\nssm.exe install EVChargingBackend
+C:\nssm\win64\nssm.exe install EVChargingBackend "C:\Apps\Smartcharge2026\backend\service-backend.bat"
+C:\nssm\win64\nssm.exe set EVChargingBackend AppDirectory "C:\Apps\Smartcharge2026\backend"
 ```
-In the GUI:
-- **Path:** `C:\Apps\Smartcharge2026\backend\venv\Scripts\python.exe`
-- **Startup directory:** `C:\Apps\Smartcharge2026\backend`
-- **Arguments:** `-m uvicorn server:app --host 0.0.0.0 --port 8001`
 
-Click "Install service"
-
-#### Install Frontend Service (using serve)
-First, install serve globally:
+#### Install Frontend Service
 ```cmd
 npm install -g serve
+C:\nssm\win64\nssm.exe install EVChargingFrontend "C:\Program Files\nodejs\npx.cmd"
+C:\nssm\win64\nssm.exe set EVChargingFrontend AppParameters "serve -s build -l 3000"
+C:\nssm\win64\nssm.exe set EVChargingFrontend AppDirectory "C:\Apps\Smartcharge2026\frontend"
 ```
-
-```cmd
-C:\nssm\win64\nssm.exe install EVChargingFrontend
-```
-In the GUI:
-- **Path:** `C:\Program Files\nodejs\serve.cmd`
-- **Startup directory:** `C:\Apps\Smartcharge2026\frontend`
-- **Arguments:** `-s build -l 3000`
-
-Click "Install service"
 
 #### Start Services
 ```cmd
 net start EVChargingBackend
 net start EVChargingFrontend
-```
-
-### Option B: Using PowerShell Scripts
-
-Create `C:\Apps\Smartcharge2026\start-backend.ps1`:
-```powershell
-Set-Location "C:\Apps\Smartcharge2026\backend"
-& ".\venv\Scripts\activate.ps1"
-python -m uvicorn server:app --host 0.0.0.0 --port 8001
-```
-
-Create `C:\Apps\Smartcharge2026\start-frontend.ps1`:
-```powershell
-Set-Location "C:\Apps\Smartcharge2026\frontend"
-npx serve -s build -l 3000
 ```
 
 ---
