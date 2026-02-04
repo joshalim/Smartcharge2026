@@ -40,6 +40,7 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 ### 3. Pricing Groups ✅ (Added Jan 2026)
 - Create/Edit/Delete pricing groups
 - Custom connector pricing per group (CCS2, CHADEMO, J1772)
+- **Connector pricing step: 50 COP** (allows 2450, 2550, etc.)
 - **Drag-and-drop user assignment** using @dnd-kit library
 - Each user can belong to only one group
 - Group pricing takes precedence over default pricing
@@ -48,13 +49,19 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
   - GET/PATCH/DELETE /api/pricing-groups/{id}
   - GET/POST/DELETE /api/pricing-groups/{id}/users/{user_id}
 
-### 4. Settings Page ✅
+### 4. Pricing Rules ✅
+- Per-account, per-connector pricing configuration
+- API endpoints:
+  - GET/POST /api/pricing
+  - DELETE /api/pricing/{id}
+
+### 5. Settings Page ✅
 **Three configuration tabs:**
 - **PayU Colombia**: API Key, API Login, Merchant ID, Account ID, Test Mode toggle
 - **SendGrid Email**: API Key, Sender Email/Name, Enable/Disable, Test email button
 - **Invoice Webhook**: URL, API Key, Enable/Disable, Test webhook, Payload preview
 
-### 5. RFID Card Management ✅
+### 6. RFID Card Management ✅
 - Create/Edit/Delete RFID cards
 - Per-card low balance threshold (default $10,000 COP)
 - Manual top-up with preset amounts
@@ -62,27 +69,27 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Transaction history log
 - Email notification when balance falls below threshold
 
-### 6. OCPP Monitoring ✅
+### 7. OCPP Monitoring ✅
 - OCPP 1.6 endpoint support (HTTP-based)
 - Remote Control with Start/Stop buttons
 - RFID card validation (min $5k balance)
 - Auto balance deduction on session end
 - Triggers email if balance drops below threshold
 
-### 7. Invoice Webhook API ✅
+### 8. Invoice Webhook API ✅
 - Configurable webhook URL
 - Full transaction details on completion
 - API key authentication
 - Delivery logs
 - Test webhook functionality
 
-### 8. Dashboard, Transactions, Reports, Chargers, Pricing
+### 9. Dashboard, Transactions, Reports, Chargers
 - All previously implemented features
 
 ## Technical Stack
 - **Frontend**: React, Tailwind CSS, Shadcn/UI, i18next, axios, @dnd-kit (drag-and-drop)
 - **Backend**: FastAPI (Python), PyJWT, Pydantic, SQLAlchemy, asyncpg, openpyxl, reportlab, httpx, sendgrid
-- **Database**: PostgreSQL 15
+- **Database**: PostgreSQL 16
 - **Payment**: PayU Colombia (sandbox)
 - **Email**: SendGrid
 
@@ -92,6 +99,10 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - GET/POST /api/users - List and create users
 - PATCH/DELETE /api/users/{id} - Update and delete users
 - **POST /api/users/import** - Import users from Excel/CSV
+
+### Pricing
+- GET/POST /api/pricing - List and create pricing rules
+- DELETE /api/pricing/{id} - Delete pricing rule
 
 ### Pricing Groups
 - GET/POST /api/pricing-groups - List and create groups
@@ -112,22 +123,40 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 ## Credentials
 - Admin: `admin@evcharge.com` / `admin123`
 
+## Deployment
+
+### Windows Server 2016
+- Use `start-backend.bat` for manual testing
+- Use `install-services.bat` for automatic service installation
+- Frontend must be rebuilt when `REACT_APP_BACKEND_URL` changes
+- **Important**: Use server IP address (not localhost) for network access
+
+### Key Files
+- `backend/start-backend.bat` - Manual backend startup script
+- `backend/service-backend.bat` - Windows service wrapper
+- `install-services.bat` - Automatic service installer
+- `backend/.env` - Must contain `DATABASE_TYPE=postgresql`
+
 ## Known Limitations
 - OCPP 1.6 is simulated via REST endpoints (not WebSocket)
 - PayU is in sandbox mode by default
 - SendGrid requires configuration before emails work
 
-## Completed Work (Jan 2026)
+## Completed Work (Feb 2026)
 1. ✅ Pricing Groups feature with drag-and-drop UI
 2. ✅ User Import from Excel/CSV with group assignment
 3. ✅ Excel import case-insensitive column handling
 4. ✅ Download Template button for user import
-5. ✅ Installation instructions (Docker + Ubuntu manual)
+5. ✅ Installation instructions (Docker + Ubuntu + Windows Server 2016)
 6. ✅ **Mass deletion of selected transactions** (Bulk Delete)
-7. ✅ All backend tests passing (100%)
+7. ✅ Database migration: MongoDB → PostgreSQL
+8. ✅ Windows Server startup scripts
+9. ✅ Connector pricing step reduced to 50 COP
+10. ✅ Fixed pricing rules and pricing groups API endpoints
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation
 2. **P2**: Backend refactoring (split server.py into modules)
 3. **P3**: Email templates customization
 4. **P3**: Bulk RFID card import
+5. **P3**: Export users to Excel
