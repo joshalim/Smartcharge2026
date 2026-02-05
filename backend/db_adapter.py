@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, func, or_, and_, text
 from sqlalchemy.dialects.postgresql import insert
 from typing import Dict, List, Any, Optional
+from datetime import datetime, timezone
 import json
 
 from database import (
@@ -30,6 +31,29 @@ MODEL_MAP = {
     'sendgrid_config': AppConfig,
     'invoice_webhook_config': AppConfig,
 }
+
+# Fields that should be datetime objects
+DATETIME_FIELDS = ['created_at', 'updated_at', 'timestamp', 'last_heartbeat', 'payment_date', 'start_time', 'end_time']
+
+
+def convert_datetime_fields(document: dict, model) -> dict:
+    """Convert string datetime fields to datetime objects for PostgreSQL"""
+    result = document.copy()
+    for key, value in result.items():
+        if value is None:
+            continue
+        # Check if this is a datetime field
+        if key in DATETIME_FIELDS and isinstance(value, str):
+            try:
+                # Try ISO format first
+                if 'T' in value:
+                    result[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                else:
+                    result[key] = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+            except (ValueError, TypeError):
+                # If conversion fails, use current time
+                result[key] = datetime.now(timezone.utc)
+    return result
 
 
 def model_to_dict(model) -> dict:
