@@ -128,6 +128,9 @@ class PostgresCollection:
             else:
                 update_data = update_dict
             
+            # Convert datetime strings to datetime objects
+            update_data = convert_datetime_fields(update_data, self.model)
+            
             query = update(self.model)
             for key, value in filter_dict.items():
                 if hasattr(self.model, key):
