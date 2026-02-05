@@ -14,8 +14,8 @@ import uuid
 from datetime import datetime, timezone, timedelta
 import bcrypt
 import jwt
-import pandas as pd
-import openpyxl
+# NOTE: pandas and openpyxl are imported lazily in functions that need them
+# to avoid startup hangs on Python 3.14
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
@@ -23,9 +23,15 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.units import inch
 from fastapi.responses import StreamingResponse
 from io import BytesIO
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 from contextlib import asynccontextmanager
+
+# Lazy import for SendGrid (may not be installed)
+try:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import Mail
+    SENDGRID_AVAILABLE = True
+except ImportError:
+    SENDGRID_AVAILABLE = False
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
