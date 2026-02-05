@@ -1,6 +1,18 @@
 # EV Charging Management System - Windows Server 2016 Installation Guide
 
-Complete guide for deploying the Smart Charge EV Charging Management System on Windows Server 2016.
+Complete guide for deploying the SmartCharge EV Charging Management System on Windows Server 2016.
+
+---
+
+## Quick Start (After Installation)
+
+Double-click **`MASTER SERVER.bat`** in `C:\Apps\Smartcharge2026\` to start both servers.
+
+**Login Credentials:**
+- Email: `admin@evcharge.com`
+- Password: `admin123`
+
+---
 
 ## Prerequisites
 
@@ -9,15 +21,16 @@ Complete guide for deploying the Smart Charge EV Charging Management System on W
 - Internet connection
 - At least 4GB RAM, 20GB disk space
 
-## Required Software Versions
+## Required Software
 
-| Software | Version | Download Link |
-|----------|---------|---------------|
-| Node.js | v25.5.0 | https://nodejs.org/dist/v25.5.0/node-v25.5.0-x64.msi |
-| NPM | v11.8.0 | (included with Node.js) |
-| Python | v3.14 | https://www.python.org/downloads/release/python-3140/ |
-| PostgreSQL | v16 | https://www.enterprisedb.com/downloads/postgres-postgresql-downloads |
-| Git | Latest | https://git-scm.com/download/win |
+| Software   | Version | Download Link |
+|------------|---------|---------------|
+| Node.js    | v20+    | https://nodejs.org/ |
+| Python     | v3.11+  | https://www.python.org/downloads/ |
+| PostgreSQL | v15+    | https://www.enterprisedb.com/downloads/postgres-postgresql-downloads |
+| Git        | Latest  | https://git-scm.com/download/win |
+
+> **Note:** Python 3.14 has compatibility issues with some packages. Python 3.11 or 3.12 is recommended.
 
 ---
 
@@ -32,61 +45,50 @@ git --version
 
 ---
 
-## Step 2: Install Node.js v25.5.0
+## Step 2: Install Node.js
 
-1. Download Node.js v25.5.0 from https://nodejs.org/dist/v25.5.0/node-v25.5.0-x64.msi
-2. Run the installer:
-   - Accept the license agreement
-   - Use default installation path: `C:\Program Files\nodejs`
-   - Ensure "Add to PATH" is checked
-3. Restart Command Prompt and verify:
+1. Download Node.js LTS from https://nodejs.org/
+2. Run the installer with default options
+3. Verify installation:
 ```cmd
 node --version
 npm --version
 ```
-Expected output: `v25.5.0` and `v11.8.0`
 
 4. Install Yarn globally:
 ```cmd
-npm install -g yarn
-yarn --version
+npm install -g yarn serve
 ```
 
 ---
 
-## Step 3: Install Python v3.14
+## Step 3: Install Python
 
-1. Download Python 3.14 from https://www.python.org/downloads/release/python-3140/
+1. Download Python from https://www.python.org/downloads/
 2. Run the installer:
-   - **CHECK** "Add Python 3.14 to PATH"
+   - **CHECK** "Add Python to PATH"
    - Click "Customize installation"
    - Check all Optional Features
    - Check "Install for all users"
-   - Install to: `C:\Python314`
 3. Verify installation:
 ```cmd
 python --version
 pip --version
 ```
-Expected output: `Python 3.14.x`
 
 ---
 
-## Step 4: Install PostgreSQL v16
+## Step 4: Install PostgreSQL
 
-1. Download PostgreSQL 16 from https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
+1. Download PostgreSQL from https://www.enterprisedb.com/downloads/postgres-postgresql-downloads
 2. Run the installer:
-   - Installation Directory: `C:\Program Files\PostgreSQL\16`
-   - Data Directory: `C:\Program Files\PostgreSQL\16\data`
-   - Password: Set a strong password for `postgres` user (remember this!)
+   - Set a password for `postgres` user (remember this!)
    - Port: `5432` (default)
-   - Locale: Default
-3. **DO NOT** launch Stack Builder when prompted
-4. Add PostgreSQL to PATH:
+3. Add PostgreSQL to PATH:
    - Open System Properties > Environment Variables
    - Edit `Path` variable
-   - Add: `C:\Program Files\PostgreSQL\16\bin`
-5. Verify installation:
+   - Add: `C:\Program Files\PostgreSQL\16\bin` (adjust version number)
+4. Verify:
 ```cmd
 psql --version
 ```
@@ -97,7 +99,7 @@ Open Command Prompt as Administrator:
 ```cmd
 psql -U postgres
 ```
-Enter the password you set during installation, then run:
+Enter password, then run:
 ```sql
 CREATE DATABASE evcharging;
 \q
@@ -119,336 +121,282 @@ cd Smartcharge2026
 
 ## Step 6: Setup Backend
 
-### Create Virtual Environment
 ```cmd
-cd backend
+cd C:\Apps\Smartcharge2026\backend
 python -m venv venv
 venv\Scripts\activate
-```
-
-### Install Dependencies
-```cmd
 pip install --upgrade pip
 pip install -r requirements.txt
+pip install email-validator
 ```
 
 ### Configure Environment
-Create file `backend\.env`:
+
+Create file `C:\Apps\Smartcharge2026\backend\.env`:
 ```env
 DATABASE_URL=postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/evcharging
-DATABASE_TYPE=postgresql
-JWT_SECRET=your-super-secure-jwt-secret-change-this-in-production
+JWT_SECRET=your-super-secure-jwt-secret-change-this
 CORS_ORIGINS=*
 ```
 
-**Important:** Replace `YOUR_PASSWORD` with your PostgreSQL password.
+**Replace `YOUR_PASSWORD` with your PostgreSQL password.**
 
-### Generate Secure JWT Secret
+### Create Admin User
+
 ```cmd
-python -c "import secrets; print(secrets.token_hex(32))"
+python create_admin.py
 ```
-Copy the output and replace `your-super-secure-jwt-secret-change-this-in-production` in `.env`
 
 ---
 
 ## Step 7: Setup Frontend
 
 ```cmd
-cd ..\frontend
+cd C:\Apps\Smartcharge2026\frontend
 yarn install
 ```
 
 ### Configure Environment
-Create file `frontend\.env`:
+
+Create file `C:\Apps\Smartcharge2026\frontend\.env`:
 ```env
-REACT_APP_BACKEND_URL=http://localhost:8001
+REACT_APP_BACKEND_URL=http://YOUR_SERVER_IP:8001
 ```
 
-For production with a domain:
-```env
-REACT_APP_BACKEND_URL=https://your-domain.com
-```
+**Replace `YOUR_SERVER_IP` with:**
+- `localhost` for local access only
+- Your server's IP address (e.g., `192.168.1.100`) for network access
 
-### Build Production Bundle
+### Build Frontend
+
 ```cmd
 yarn build
 ```
 
 ---
 
-## Step 8: Install Windows Services
+## Step 8: Test Installation
 
-### Option A: Automatic Installation (Recommended)
+### Start Backend (Terminal 1)
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+venv\Scripts\activate
+python -m uvicorn server:app --host 0.0.0.0 --port 8001
+```
 
-Run the service installer as Administrator:
+### Start Frontend (Terminal 2)
+```cmd
+cd C:\Apps\Smartcharge2026\frontend
+npx serve -s build -l 3000
+```
+
+### Verify
+- Backend: http://localhost:8001/api/health
+- Frontend: http://localhost:3000
+
+### Login
+- Email: `admin@evcharge.com`
+- Password: `admin123`
+
+---
+
+## Step 9: Easy Startup with MASTER SERVER.bat
+
+Once testing is complete, use the master script for easy startup:
+
+```cmd
+cd C:\Apps\Smartcharge2026
+"MASTER SERVER.bat"
+```
+
+This script will:
+1. Check and install missing dependencies
+2. Setup database and admin user
+3. Start backend server (port 8001)
+4. Start frontend server (port 3000)
+5. Open browser automatically
+
+---
+
+## Step 10: Configure Windows Firewall
+
+Open PowerShell as Administrator:
+```powershell
+New-NetFirewallRule -DisplayName "SmartCharge Backend" -Direction Inbound -Port 8001 -Protocol TCP -Action Allow
+New-NetFirewallRule -DisplayName "SmartCharge Frontend" -Direction Inbound -Port 3000 -Protocol TCP -Action Allow
+```
+
+---
+
+## Step 11: Install as Windows Services (Optional)
+
+For automatic startup on boot, install as Windows Services using NSSM:
+
+1. Download NSSM from https://nssm.cc/download
+2. Extract to `C:\nssm`
+3. Run as Administrator:
+
 ```cmd
 cd C:\Apps\Smartcharge2026
 install-services.bat
 ```
 
-This will automatically:
-- Install backend service (EVChargingBackend)
-- Install frontend service (EVChargingFrontend)
-- Configure logging to `C:\Apps\Smartcharge2026\logs\`
-- Start both services
-
-### Option B: Manual Testing First
-
-Before installing services, test the backend manually:
-```cmd
-cd C:\Apps\Smartcharge2026\backend
-start-backend.bat
-```
-
-This script will:
-- Check your `.env` configuration
-- Test database connectivity
-- Start the server with the correct settings
-
-### Option C: Using NSSM Manually
-
-1. Download NSSM from https://nssm.cc/download
-2. Extract to `C:\nssm`
-
-#### Install Backend Service
+Or manually:
 ```cmd
 C:\nssm\win64\nssm.exe install EVChargingBackend "C:\Apps\Smartcharge2026\backend\service-backend.bat"
-C:\nssm\win64\nssm.exe set EVChargingBackend AppDirectory "C:\Apps\Smartcharge2026\backend"
-```
-
-#### Install Frontend Service
-```cmd
-npm install -g serve
 C:\nssm\win64\nssm.exe install EVChargingFrontend "C:\Program Files\nodejs\npx.cmd"
 C:\nssm\win64\nssm.exe set EVChargingFrontend AppParameters "serve -s build -l 3000"
 C:\nssm\win64\nssm.exe set EVChargingFrontend AppDirectory "C:\Apps\Smartcharge2026\frontend"
-```
 
-#### Start Services
-```cmd
 net start EVChargingBackend
 net start EVChargingFrontend
 ```
 
 ---
 
-## Step 9: Configure Windows Firewall
+## Updating the Application
 
-Open PowerShell as Administrator:
-```powershell
-# Allow Backend (port 8001)
-New-NetFirewallRule -DisplayName "EV Charging Backend" -Direction Inbound -Port 8001 -Protocol TCP -Action Allow
-
-# Allow Frontend (port 3000)
-New-NetFirewallRule -DisplayName "EV Charging Frontend" -Direction Inbound -Port 3000 -Protocol TCP -Action Allow
-
-# Allow PostgreSQL (port 5432) - only if remote access needed
-New-NetFirewallRule -DisplayName "PostgreSQL" -Direction Inbound -Port 5432 -Protocol TCP -Action Allow
+### Quick Update
+```cmd
+cd C:\Apps\Smartcharge2026
+git pull origin main
+cd backend
+venv\Scripts\activate
+pip install -r requirements.txt
+cd ..\frontend
+yarn install
+yarn build
 ```
 
----
+Then restart using `MASTER SERVER.bat` or restart services:
+```cmd
+net stop EVChargingBackend
+net stop EVChargingFrontend
+net start EVChargingBackend
+net start EVChargingFrontend
+```
 
-## Step 10: Create Admin User
+### After Update - If Login Fails
 
-Before you can login, you must create the admin user in the database:
-
+Run the admin setup again:
 ```cmd
 cd C:\Apps\Smartcharge2026\backend
-.\venv\Scripts\activate
+venv\Scripts\activate
 python create_admin.py
 ```
-
-Or double-click: `C:\Apps\Smartcharge2026\backend\create-admin.bat`
-
-This will create the default admin user and display the login credentials.
-
----
-
-## Step 11: Setup IIS as Reverse Proxy (Optional but Recommended)
-
-### Install IIS
-1. Open Server Manager
-2. Add Roles and Features
-3. Select "Web Server (IIS)"
-4. Include "Application Development" features
-
-### Install URL Rewrite and ARR
-1. Download URL Rewrite: https://www.iis.net/downloads/microsoft/url-rewrite
-2. Download ARR: https://www.iis.net/downloads/microsoft/application-request-routing
-
-### Configure Reverse Proxy
-Create `C:\inetpub\wwwroot\web.config`:
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<configuration>
-    <system.webServer>
-        <rewrite>
-            <rules>
-                <rule name="API Proxy" stopProcessing="true">
-                    <match url="^api/(.*)" />
-                    <action type="Rewrite" url="http://localhost:8001/api/{R:1}" />
-                </rule>
-                <rule name="Frontend Proxy" stopProcessing="true">
-                    <match url="(.*)" />
-                    <action type="Rewrite" url="http://localhost:3000/{R:1}" />
-                </rule>
-            </rules>
-        </rewrite>
-    </system.webServer>
-</configuration>
-```
-
----
-
-## Step 12: Verify Installation
-
-### Test Backend
-```cmd
-curl http://localhost:8001/api/health
-```
-
-### Test Frontend
-Open browser: http://localhost:3000
-
-### Default Login
-- **Email:** admin@evcharge.com
-- **Password:** admin123
-
-**⚠️ IMPORTANT: Change the admin password immediately after first login!**
 
 ---
 
 ## Troubleshooting
 
-### ⚠️ Login Not Working (Most Common Issue)
-
-**Symptom:** Backend diagnostic passes but cannot login from browser.
-
-**Cause:** The frontend was built with the wrong `REACT_APP_BACKEND_URL`. React environment variables are baked into the build at compile time.
-
-**Fix:**
-1. Open `C:\Apps\Smartcharge2026\frontend\.env`
-2. Set the correct backend URL:
-   ```env
-   REACT_APP_BACKEND_URL=http://localhost:8001
-   ```
-3. **Rebuild the frontend:**
-   ```cmd
-   cd C:\Apps\Smartcharge2026\frontend
-   yarn build
-   ```
-4. Restart the frontend service:
-   ```cmd
-   net stop EVChargingFrontend
-   net start EVChargingFrontend
-   ```
-
-Or run the helper script:
-```cmd
-C:\Apps\Smartcharge2026\frontend\rebuild.bat
-```
-
-### Backend won't start
+### Cannot Login After Update
 ```cmd
 cd C:\Apps\Smartcharge2026\backend
 venv\Scripts\activate
-python -c "import asyncpg; print('asyncpg OK')"
-python -c "from sqlalchemy import create_engine; print('SQLAlchemy OK')"
+python create_admin.py
 ```
 
-### Database connection issues
+### Backend Won't Start
+Check for missing packages:
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+venv\Scripts\activate
+pip install email-validator pandas
+```
+
+### Frontend Shows Blank Page
+Rebuild the frontend:
+```cmd
+cd C:\Apps\Smartcharge2026\frontend
+yarn build
+```
+
+### Cannot Access From Other Computers
+1. Check `frontend\.env` has the server IP (not localhost)
+2. Rebuild frontend: `yarn build`
+3. Check Windows Firewall rules
+
+### Database Connection Error
+Verify PostgreSQL is running:
 ```cmd
 psql -U postgres -d evcharging -c "SELECT 1;"
 ```
 
-### Check service status
+### Check Service Status
 ```cmd
 sc query EVChargingBackend
 sc query EVChargingFrontend
 ```
 
-### View logs (if using NSSM)
-```cmd
-C:\nssm\win64\nssm.exe status EVChargingBackend
-```
+### View Backend Logs
+Check the SMARTCHARGE BACKEND window for error messages.
 
-### Port already in use
+### Port Already in Use
 ```cmd
 netstat -ano | findstr :8001
 netstat -ano | findstr :3000
 taskkill /PID <PID> /F
 ```
 
-### Clear Browser Cache
-If login still fails after rebuilding:
-1. Press `Ctrl + Shift + Delete` in your browser
-2. Clear cached images and files
-3. Reload the page with `Ctrl + F5`
-
----
-
-## Updating the Application
-
-```cmd
-cd C:\Apps\Smartcharge2026
-
-:: Stop services
-net stop EVChargingBackend
-net stop EVChargingFrontend
-
-:: Pull latest changes
-git pull origin main
-
-:: Update backend
-cd backend
-venv\Scripts\activate
-pip install -r requirements.txt
-deactivate
-
-:: Update frontend
-cd ..\frontend
-yarn install
-yarn build
-
-:: Start services
-net start EVChargingBackend
-net start EVChargingFrontend
-```
-
 ---
 
 ## Backup Database
 
-### Manual Backup
 ```cmd
-pg_dump -U postgres evcharging > C:\Backups\evcharging_backup_%date:~-4,4%%date:~-10,2%%date:~-7,2%.sql
+pg_dump -U postgres evcharging > C:\Backups\evcharging_backup.sql
 ```
 
-### Scheduled Backup (Task Scheduler)
-Create `C:\Scripts\backup-db.bat`:
-```batch
-@echo off
-set BACKUP_DIR=C:\Backups
-set PGPASSWORD=YOUR_PASSWORD
-pg_dump -U postgres evcharging > %BACKUP_DIR%\evcharging_%date:~-4,4%%date:~-10,2%%date:~-7,2%.sql
-```
+## Restore Database
 
-Schedule this script to run daily via Task Scheduler.
+```cmd
+psql -U postgres evcharging < C:\Backups\evcharging_backup.sql
+```
 
 ---
 
-## Security Recommendations
+## Security Checklist
 
-1. **Change Default Password:** Update admin password immediately
-2. **Use HTTPS:** Configure SSL certificate in IIS
-3. **Restrict Database Access:** Only allow localhost connections
-4. **Regular Updates:** Keep Windows, Node.js, and Python updated
-5. **Backup Strategy:** Implement daily database backups
-6. **Firewall:** Only open necessary ports
+- [ ] Change default admin password after first login
+- [ ] Use strong JWT_SECRET in backend\.env
+- [ ] Configure HTTPS via IIS reverse proxy for production
+- [ ] Restrict database to localhost only
+- [ ] Enable Windows Firewall with specific port rules
+- [ ] Setup regular database backups
+
+---
+
+## File Structure
+
+```
+C:\Apps\Smartcharge2026\
+├── MASTER SERVER.bat      <- Double-click to start everything
+├── install-services.bat   <- Install as Windows Services
+├── backend\
+│   ├── .env               <- Database config (edit this!)
+│   ├── venv\              <- Python virtual environment
+│   ├── server.py          <- Main backend server
+│   ├── create_admin.py    <- Creates admin user
+│   ├── start-backend.bat  <- Manual backend start
+│   └── service-backend.bat <- For Windows Service
+├── frontend\
+│   ├── .env               <- Backend URL config (edit this!)
+│   ├── build\             <- Production build (yarn build)
+│   └── src\               <- Source code
+└── logs\                  <- Application logs
+```
+
+---
+
+## Default Credentials
+
+| Role  | Email                | Password |
+|-------|----------------------|----------|
+| Admin | admin@evcharge.com   | admin123 |
+
+**⚠️ Change the admin password immediately after first login!**
 
 ---
 
 ## Support
 
-For issues and questions:
-- GitHub Issues: https://github.com/YOUR_USERNAME/Smartcharge2026/issues
+For issues: Check the SMARTCHARGE BACKEND window for error messages, then refer to the Troubleshooting section above.
