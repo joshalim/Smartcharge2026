@@ -1238,9 +1238,11 @@ async def import_users(
         raise HTTPException(status_code=400, detail="File must be Excel (.xlsx, .xls) or CSV (.csv)")
     
     try:
+        # Lazy import pandas
+        import pandas as pd
+        import io
         contents = await file.read()
         if file.filename.endswith('.csv'):
-            import io
             df = pd.read_csv(io.BytesIO(contents))
         else:
             df = pd.read_excel(io.BytesIO(contents))
