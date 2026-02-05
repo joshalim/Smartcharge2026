@@ -111,7 +111,10 @@ class PostgresCollection:
             # Remove _id if present (MongoDB artifact)
             document.pop('_id', None)
             
-            obj = self.model(**document)
+            # Convert datetime strings to datetime objects
+            converted_doc = convert_datetime_fields(document, self.model)
+            
+            obj = self.model(**converted_doc)
             session.add(obj)
             await session.commit()
             return type('InsertResult', (), {'inserted_id': document.get('id')})()
