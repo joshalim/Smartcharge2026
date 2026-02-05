@@ -25,12 +25,12 @@ echo [2/5] Checking dependencies...
 pip show email-validator >nul 2>&1
 if errorlevel 1 (
     echo       Installing email-validator...
-    pip install email-validator
+    pip install email-validator >nul 2>&1
 )
 pip show pandas >nul 2>&1
 if errorlevel 1 (
     echo       Installing pandas...
-    pip install pandas
+    pip install pandas >nul 2>&1
 )
 echo       OK
 
@@ -42,11 +42,10 @@ if errorlevel 1 (
     echo [WARNING] Admin setup had issues - continuing anyway
 )
 
-:: Step 4: Start Backend
+:: Step 4: Start Backend (PostgreSQL mode is now forced in server.py)
 echo.
 echo [4/5] Starting Backend Server (port 8001)...
-set DATABASE_TYPE=postgresql
-start "SMARTCHARGE BACKEND" cmd /k "cd /d C:\Apps\Smartcharge2026\backend && call venv\Scripts\activate.bat && set DATABASE_TYPE=postgresql && python -m uvicorn server:app --host 0.0.0.0 --port 8001"
+start "SMARTCHARGE BACKEND" cmd /k "cd /d C:\Apps\Smartcharge2026\backend && call venv\Scripts\activate.bat && python -m uvicorn server:app --host 0.0.0.0 --port 8001"
 
 echo       Waiting for backend to start...
 timeout /t 8 /nobreak >nul
