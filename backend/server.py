@@ -993,6 +993,8 @@ async def import_transactions(
         raise HTTPException(status_code=400, detail="Only Excel files (.xlsx, .xls) are allowed")
     
     try:
+        # Lazy import pandas
+        import pandas as pd
         contents = await file.read()
         df = pd.read_excel(BytesIO(contents))
     except Exception as e:
