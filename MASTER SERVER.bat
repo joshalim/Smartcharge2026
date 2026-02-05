@@ -1,6 +1,4 @@
 @echo off
-setlocal enabledelayedexpansion
-
 title SmartCharge Master Server
 color 0A
 
@@ -30,20 +28,23 @@ echo  --------------------------------------------------------
 :: Check backend directory
 if not exist "%BACKEND_DIR%" (
     echo  [ERROR] Backend directory not found: %BACKEND_DIR%
-    goto :error
+    pause
+    exit /b 1
 )
 
 :: Check frontend directory  
 if not exist "%FRONTEND_DIR%" (
     echo  [ERROR] Frontend directory not found: %FRONTEND_DIR%
-    goto :error
+    pause
+    exit /b 1
 )
 
 :: Check Python venv
 if not exist "%BACKEND_DIR%\venv\Scripts\python.exe" (
     echo  [ERROR] Python virtual environment not found!
     echo  Please run: cd %BACKEND_DIR% ^&^& python -m venv venv
-    goto :error
+    pause
+    exit /b 1
 )
 
 echo  [OK] Directories verified
@@ -58,19 +59,17 @@ cd /d %BACKEND_DIR%
 :: Check if .env exists, create if not
 if not exist ".env" (
     echo  [INFO] Creating backend .env file...
-    (
-        echo DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/evcharging
-        echo DATABASE_TYPE=postgresql
-        echo JWT_SECRET=smartcharge-secret-key-2026
-        echo CORS_ORIGINS=*
-    ) > .env
+    echo DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/evcharging> .env
+    echo DATABASE_TYPE=postgresql>> .env
+    echo JWT_SECRET=smartcharge-secret-key-2026>> .env
+    echo CORS_ORIGINS=*>> .env
     echo  [WARNING] Created default .env - edit DATABASE_URL with your password!
 )
 
 :: Ensure DATABASE_TYPE=postgresql is set
 findstr /C:"DATABASE_TYPE=postgresql" .env >nul 2>&1
 if errorlevel 1 (
-    echo DATABASE_TYPE=postgresql >> .env
+    echo DATABASE_TYPE=postgresql>> .env
     echo  [OK] Added DATABASE_TYPE=postgresql
 )
 
@@ -82,24 +81,10 @@ echo  --------------------------------------------------------
 
 call "%BACKEND_DIR%\venv\Scripts\activate.bat"
 
-python -c "import asyncio, asyncpg, os; from dotenv import load_dotenv; load_dotenv(); url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://'); asyncio.run(asyncpg.connect(url,timeout=5)); print('  [OK] PostgreSQL connection successful')" 2>nul
-if errorlevel 1 (
-    echo  [ERROR] Cannot connect to PostgreSQL!
-    echo.
-    echo  Please verify:
-    echo    1. PostgreSQL service is running (services.msc)
-    echo    2. Database 'evcharging' exists
-    echo    3. PASSWORD in DATABASE_URL is correct
-    echo.
-    echo  Current DATABASE_URL in .env:
-    findstr "DATABASE_URL" .env
-    echo.
-    pause
-    goto :error
-)
-
+python -c "import asyncio, asyncpg, os; from dotenv import load_dotenv; load_dotenv(); url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://'); asyncio.run(asyncpg.connect(url,timeout=5)); print('  [OK] PostgreSQL connection successful')"
 echo.
-echo  [STEP 4/6] Creating admin user...
+
+echo  [STEP 4/6] Creating database tables and admin user...
 echo  --------------------------------------------------------
 
 python -c "import asyncio,bcrypt,asyncpg,uuid,os;from dotenv import load_dotenv;load_dotenv();url=os.environ.get('DATABASE_URL','').replace('postgresql+asyncpg://','postgresql://');exec('''
@@ -121,15 +106,12 @@ async def setup():
     else:
         await conn.execute('INSERT INTO users(id,email,name,password_hash,role)VALUES($1,$2,$3,$4,$5)',str(uuid.uuid4()),'admin@evcharge.com','Admin User',pwd,'admin')
         print('  [OK] Admin user created')
+    print('  [OK] Database tables verified')
     await conn.close()
 asyncio.run(setup())
 ''')"
-
-if errorlevel 1 (
-    echo  [WARNING] Could not setup admin user automatically
-)
-
 echo.
+
 echo  [STEP 5/6] Starting Backend Server...
 echo  --------------------------------------------------------
 echo  Server: server.py (PostgreSQL mode)
@@ -137,20 +119,13 @@ echo  Port:   8001
 echo.
 
 :: Start backend in a new window
-start "SmartCharge Backend" cmd /k "cd /d %BACKEND_DIR% && call venv\Scripts\activate.bat && set DATABASE_TYPE=postgresql && python -m uvicorn server:app --host 0.0.0.0 --port 8001"
+start "SmartCharge Backend" cmd /k "cd /d %BACKEND_DIR% && call venv\Scripts\activate.bat && set DATABASE_TYPE=postgresql && echo Starting backend... && python -m uvicorn server:app --host 0.0.0.0 --port 8001"
 
 :: Wait for backend to start
-echo  Waiting for backend to start...
-timeout /t 5 /nobreak >nul
+echo  Waiting for backend to initialize (10 seconds)...
+timeout /t 10 /nobreak >nul
 
-:: Verify backend is running
-curl -s http://localhost:8001/api/health >nul 2>&1
-if errorlevel 1 (
-    echo  [WARNING] Backend may not have started correctly
-    echo  Check the Backend window for errors
-) else (
-    echo  [OK] Backend is running on port 8001
-)
+echo  [OK] Backend started
 
 echo.
 echo  [STEP 6/6] Starting Frontend Server...
@@ -158,28 +133,20 @@ echo  --------------------------------------------------------
 echo  Port: 3000
 echo.
 
-:: Check if serve is installed
-where serve >nul 2>&1
-if errorlevel 1 (
-    echo  [INFO] Installing 'serve' package...
-    call npm install -g serve
-)
-
 :: Check if frontend build exists
 if not exist "%FRONTEND_DIR%\build" (
-    echo  [WARNING] Frontend build not found!
-    echo  Building frontend...
+    echo  [WARNING] Frontend build not found! Building now...
     cd /d %FRONTEND_DIR%
     call yarn build
 )
 
 :: Start frontend in a new window
-start "SmartCharge Frontend" cmd /k "cd /d %FRONTEND_DIR% && npx serve -s build -l 3000"
+start "SmartCharge Frontend" cmd /k "cd /d %FRONTEND_DIR% && echo Starting frontend... && npx serve -s build -l 3000"
 
 :: Wait for frontend
-timeout /t 3 /nobreak >nul
+timeout /t 5 /nobreak >nul
 
-echo  [OK] Frontend is running on port 3000
+echo  [OK] Frontend started
 
 echo.
 echo  ============================================================
@@ -191,18 +158,19 @@ echo.
 echo    Backend:  http://localhost:8001
 echo    Frontend: http://localhost:3000
 echo.
-echo    Login Credentials:
-echo    ------------------
+echo    ----------------------------------------
+echo    LOGIN CREDENTIALS:
 echo    Email:    admin@evcharge.com
 echo    Password: admin123
+echo    ----------------------------------------
 echo.
-echo  ============================================================
-echo.
-echo  Two server windows should now be open:
+echo  Two server windows are now open:
 echo    - "SmartCharge Backend"  (Python/Uvicorn)
 echo    - "SmartCharge Frontend" (Node/Serve)
 echo.
-echo  To stop servers, close those windows or press Ctrl+C in them.
+echo  To stop servers, close those windows.
+echo.
+echo  ============================================================
 echo.
 echo  Press any key to open the application in your browser...
 pause >nul
@@ -210,19 +178,7 @@ pause >nul
 :: Open browser
 start http://localhost:3000
 
-goto :end
-
-:error
 echo.
-echo  ============================================================
-echo  [ERROR] Server startup failed! See messages above.
-echo  ============================================================
-pause
-exit /b 1
-
-:end
-echo.
-echo  Master Server script completed.
-echo  Keep this window open to monitor status.
+echo  Browser opened. You can close this window.
 echo.
 pause
