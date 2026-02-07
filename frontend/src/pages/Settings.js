@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle, User, Key } from 'lucide-react';
+import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle, User, Key, QrCode, Copy, ExternalLink, Zap } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const FRONTEND_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || window.location.origin;
 
 function Settings() {
   const { user, token } = useAuth();
@@ -13,6 +14,10 @@ function Settings() {
   const [testing, setTesting] = useState(false);
   const [showApiKey, setShowApiKey] = useState({});
   const [message, setMessage] = useState(null);
+  
+  // Chargers for QR codes
+  const [chargers, setChargers] = useState([]);
+  const [copiedUrl, setCopiedUrl] = useState(null);
   
   // Password Change
   const [passwordData, setPasswordData] = useState({
@@ -49,6 +54,7 @@ function Settings() {
 
   useEffect(() => {
     fetchSettings();
+    fetchChargers();
   }, []);
 
   const fetchSettings = async () => {
@@ -70,6 +76,15 @@ function Settings() {
     }
   };
 
+  const fetchChargers = async () => {
+    try {
+      const response = await axios.get(`${API}/chargers`);
+      setChargers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch chargers:', error);
+    }
+  };
+
   const showMessage = (type, text) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);
@@ -78,7 +93,7 @@ function Settings() {
   const savePayuSettings = async () => {
     setSaving(true);
     try {
-      await axios.post(`${API}/settings/payu`, payuSettings);
+      await axios.put(`${API}/settings/payu`, payuSettings);
       showMessage('success', 'PayU settings saved successfully');
     } catch (error) {
       showMessage('error', error.response?.data?.detail || 'Failed to save PayU settings');
@@ -178,8 +193,30 @@ function Settings() {
     }
   };
 
+  // Generate QR code URL for a specific charger and connector
+  const getQRCodeUrl = (chargerId, connector) => {
+    const baseUrl = window.location.origin;
+    return `${baseUrl}/charge/${chargerId}?connector=${connector}`;
+  };
+
+  // Copy URL to clipboard
+  const copyToClipboard = async (url, key) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedUrl(key);
+      setTimeout(() => setCopiedUrl(null), 2000);
+      showMessage('success', 'URL copied to clipboard!');
+    } catch (err) {
+      showMessage('error', 'Failed to copy URL');
+    }
+  };
+
+  // Connector types
+  const CONNECTORS = ['CCS2', 'CHADEMO', 'J1772'];
+
   const tabs = [
     { id: 'account', name: 'Account', icon: User },
+    { id: 'qrcodes', name: 'QR Codes', icon: QrCode },
     { id: 'payu', name: 'PayU Colombia', icon: CreditCard },
     { id: 'sendgrid', name: 'Email (SendGrid)', icon: Mail },
     { id: 'webhook', name: 'FullColombia', icon: Webhook },
@@ -351,6 +388,139 @@ function Settings() {
         </div>
       )}
 
+      {/* QR Codes Tab */}
+      {activeTab === 'qrcodes' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+              <QrCode className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>Charger QR Codes</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Generate QR code URLs for each connector type</p>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Zap className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">QR Code URLs for Charger Display</p>
+              <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                Copy these URLs to generate QR codes for your charger display. Each connector type (CCS2, CHADEMO, J1772) has a unique URL that directs users to the payment page with the connector pre-selected.
+              </p>
+            </div>
+          </div>
+
+          {chargers.length === 0 ? (
+            <div className="text-center py-12 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <QrCode className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-slate-400 mb-2">No chargers found</p>
+              <p className="text-sm text-slate-500">Add chargers in the Chargers page to generate QR codes</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {chargers.map((charger) => (
+                <div key={charger.id} className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                  {/* Charger Header */}
+                  <div className="bg-slate-50 dark:bg-slate-800 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-bold text-lg">{charger.name}</h3>
+                        <p className="text-sm text-slate-500">ID: {charger.charger_id} {charger.location && `• ${charger.location}`}</p>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        charger.status?.toLowerCase() === 'available' 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                      }`}>
+                        {charger.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Connector QR Codes */}
+                  <div className="p-4">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">QR Code URLs per Connector:</p>
+                    <div className="grid gap-3">
+                      {CONNECTORS.map((connector) => {
+                        const url = getQRCodeUrl(charger.charger_id, connector);
+                        const copyKey = `${charger.id}-${connector}`;
+                        
+                        return (
+                          <div 
+                            key={connector}
+                            className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg"
+                          >
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                              connector === 'CCS2' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                              connector === 'CHADEMO' ? 'bg-purple-100 dark:bg-purple-900/30' :
+                              'bg-green-100 dark:bg-green-900/30'
+                            }`}>
+                              <span className={`text-xs font-bold ${
+                                connector === 'CCS2' ? 'text-blue-700 dark:text-blue-400' :
+                                connector === 'CHADEMO' ? 'text-purple-700 dark:text-purple-400' :
+                                'text-green-700 dark:text-green-400'
+                              }`}>
+                                {connector === 'CCS2' ? 'CCS' : connector === 'CHADEMO' ? 'CHD' : 'J17'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{connector}</p>
+                              <p className="text-xs text-slate-500 truncate font-mono">{url}</p>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => copyToClipboard(url, copyKey)}
+                                className={`p-2 rounded-lg transition-colors ${
+                                  copiedUrl === copyKey
+                                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                    : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
+                                }`}
+                                title="Copy URL"
+                                data-testid={`copy-${charger.charger_id}-${connector}`}
+                              >
+                                {copiedUrl === copyKey ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                              </button>
+                              
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-400 rounded-lg transition-colors"
+                                title="Open in new tab"
+                                data-testid={`open-${charger.charger_id}-${connector}`}
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* QR Code Generation Info */}
+          <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h3 className="font-medium mb-4">How to Generate QR Codes</h3>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+              <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li>Copy the URL for the specific connector type</li>
+                <li>Use any QR code generator (e.g., <a href="https://www.qrcode-generator.de/" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">qrcode-generator.de</a>)</li>
+                <li>Paste the URL and generate the QR code</li>
+                <li>Download and display on your charger's screen for that connector</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PayU Settings */}
       {activeTab === 'payu' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
@@ -360,7 +530,7 @@ function Settings() {
             </div>
             <div>
               <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>PayU Colombia</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Configure PayU payment gateway for RFID top-ups</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Configure PayU payment gateway for QR code payments</p>
             </div>
           </div>
           
