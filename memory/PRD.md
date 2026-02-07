@@ -157,10 +157,14 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 12. ✅ **P1 Bug Fix**: Charger creation form includes required charger_id field
 13. ✅ **P1 Bug Fix**: OCPP status endpoint working (OCPPSession model mapped correctly)
 14. ✅ **P1 Bug Fix**: OCPP.js frontend charger.connectors compatibility fix
+15. ✅ **Critical Fix**: Added missing database models (Settings, PayUPayment, PayUWebhookLog, OCPPBoot, OCPPTransaction, InvoiceWebhookConfig, InvoiceWebhookLog)
+16. ✅ **Critical Fix**: MODEL_MAP updated with 'pricing' → PricingRule alias and all new collections
+17. ✅ **Critical Fix**: db_adapter.py returns proper DeleteResult/UpdateResult objects with attribute access
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation
 2. **P2**: Backend refactoring (split server.py into modules)
-3. **P3**: Email templates customization
-4. **P3**: Bulk RFID card import
-5. **P3**: Export users to Excel
+3. **P2**: Replace db_adapter.py with direct SQLAlchemy calls
+4. **P3**: Email templates customization
+5. **P3**: Bulk RFID card import
+6. **P3**: Export users to Excel
