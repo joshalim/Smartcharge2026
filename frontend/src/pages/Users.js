@@ -18,7 +18,8 @@ function Users() {
     password: '',
     role: 'user',
     rfid_card_number: '',
-    rfid_balance: 0
+    rfid_balance: 0,
+    placa: ''
   });
   
   // Top Up Modal State
