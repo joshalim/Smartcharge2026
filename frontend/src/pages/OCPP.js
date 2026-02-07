@@ -194,7 +194,7 @@ function OCPP() {
                   </div>
                   
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-                    {charger.connector_types.join(', ')} | {charger.max_power} kW
+                    {(charger.connectors || charger.connector_types || []).join(', ')} {charger.max_power ? `| ${charger.max_power} kW` : ''}
                   </div>
                   
                   {isCharging && activeTx ? (
