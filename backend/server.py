@@ -141,6 +141,7 @@ app.include_router(export_router, prefix="/api")
 app.include_router(email_router, prefix="/api")
 app.include_router(reports_router, prefix="/api")
 app.include_router(public_charge_router, prefix="/api")
+app.include_router(expenses_router, prefix="/api")
 
 
 # Health check endpoint
