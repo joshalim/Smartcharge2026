@@ -233,7 +233,7 @@ class PostgresCollection:
             
             result = await session.execute(query)
             await session.commit()
-            return {'deleted_count': result.rowcount}
+            return DeleteResult(result.rowcount)
     
     async def delete_many(self, filters: dict):
         """Delete multiple records"""
