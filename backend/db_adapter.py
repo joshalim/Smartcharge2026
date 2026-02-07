@@ -17,6 +17,19 @@ from database import (
     OCPPBoot, OCPPTransaction, InvoiceWebhookConfig, InvoiceWebhookLog
 )
 
+
+class DeleteResult:
+    """Wrapper for delete operation result to support attribute access"""
+    def __init__(self, deleted_count: int):
+        self.deleted_count = deleted_count
+
+
+class UpdateResult:
+    """Wrapper for update operation result to support attribute access"""
+    def __init__(self, modified_count: int, matched_count: int = 0):
+        self.modified_count = modified_count
+        self.matched_count = matched_count
+
 # Model mapping
 MODEL_MAP = {
     'users': User,
