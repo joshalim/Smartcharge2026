@@ -125,6 +125,7 @@ from routes.export import router as export_router
 from routes.email import router as email_router
 from routes.reports import router as reports_router
 from routes.public_charge import router as public_charge_router
+from routes.expenses import router as expenses_router
 
 # Register all routers under /api prefix
 app.include_router(auth_router, prefix="/api")
