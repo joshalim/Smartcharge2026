@@ -170,6 +170,9 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 24. ✅ **P1 COMPLETE**: Full OCPP 1.6 WebSocket implementation on port 9000
 25. ✅ **P3 COMPLETE**: Email templates customization with SendGrid integration
 26. ✅ **ENHANCEMENT**: Real-time WebSocket updates to frontend dashboard for live OCPP status
+27. ✅ **SECURITY**: Demo credentials removed from login page (Feb 7, 2026)
+28. ✅ **FEATURE**: Password change functionality added to Settings > Account tab (Feb 7, 2026)
+29. ✅ **P0 BUG FIX**: Excel import made more flexible - only requires: TxID, Station, Connector, Account, Start Time, End Time, Meter value(kW.h). All other columns ignored. (Feb 7, 2026)
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
