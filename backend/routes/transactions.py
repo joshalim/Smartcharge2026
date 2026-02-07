@@ -627,6 +627,12 @@ async def import_transactions_json(
             cost = round(meter_value * price_per_kwh, 2)
             duration = calculate_charging_duration(start_time, end_time)
             
+            # Try to deduct from RFID balance
+            payment_status = "UNPAID"
+            deduction_result = await deduct_rfid_balance(account, cost)
+            if deduction_result.get("deducted"):
+                payment_status = "PAID"
+            
             # Create transaction
             new_tx = Transaction(
                 id=str(uuid.uuid4()),
@@ -639,7 +645,7 @@ async def import_transactions_json(
                 meter_value=meter_value,
                 charging_duration=duration,
                 cost=cost,
-                payment_status="UNPAID"
+                payment_status=payment_status
             )
             
             session.add(new_tx)
