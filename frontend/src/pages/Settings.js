@@ -597,75 +597,53 @@ function Settings() {
         </div>
       )}
 
-      {/* PayU Settings */}
-      {activeTab === 'payu' && (
+      {/* BOLD.CO Settings */}
+      {activeTab === 'bold' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
               <CreditCard className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>PayU Colombia</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Configure PayU payment gateway for QR code payments</p>
+              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>BOLD.CO Colombia</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Configure BOLD.CO payment gateway for QR code payments</p>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Zap className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">Payment Methods Available</p>
+              <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                Credit/Debit Cards, PSE, Botón Bancolombia, Nequi
+              </p>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2">API Key</label>
+              <label className="block text-sm font-medium mb-2">API Key (Llave de Identidad)</label>
               <div className="relative">
                 <input
-                  type={showApiKey.payu ? 'text' : 'password'}
-                  value={payuSettings.api_key}
-                  onChange={(e) => setPayuSettings({...payuSettings, api_key: e.target.value})}
+                  type={showApiKey.bold ? 'text' : 'password'}
+                  value={boldSettings.api_key}
+                  onChange={(e) => setBoldSettings({...boldSettings, api_key: e.target.value})}
                   className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm pr-10"
-                  placeholder="Your PayU API Key"
-                  data-testid="payu-api-key"
+                  placeholder="Your BOLD.CO API Key"
+                  data-testid="bold-api-key"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowApiKey({...showApiKey, payu: !showApiKey.payu})}
+                  onClick={() => setShowApiKey({...showApiKey, bold: !showApiKey.bold})}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
                 >
-                  {showApiKey.payu ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showApiKey.bold ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">API Login</label>
-              <input
-                type="text"
-                value={payuSettings.api_login}
-                onChange={(e) => setPayuSettings({...payuSettings, api_login: e.target.value})}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                placeholder="Your PayU API Login"
-                data-testid="payu-api-login"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Merchant ID</label>
-              <input
-                type="text"
-                value={payuSettings.merchant_id}
-                onChange={(e) => setPayuSettings({...payuSettings, merchant_id: e.target.value})}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                placeholder="Your Merchant ID"
-                data-testid="payu-merchant-id"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Account ID</label>
-              <input
-                type="text"
-                value={payuSettings.account_id}
-                onChange={(e) => setPayuSettings({...payuSettings, account_id: e.target.value})}
-                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                placeholder="Your Account ID"
-                data-testid="payu-account-id"
-              />
+              <p className="text-xs text-slate-500 mt-1">
+                Get your API key from <a href="https://bold.co" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">bold.co</a> → Panel de comercios → Integraciones
+              </p>
             </div>
           </div>
           
@@ -675,27 +653,42 @@ function Settings() {
               <p className="text-sm text-slate-500 dark:text-slate-400">Use sandbox environment for testing</p>
             </div>
             <button
-              onClick={() => setPayuSettings({...payuSettings, test_mode: !payuSettings.test_mode})}
+              onClick={() => setBoldSettings({...boldSettings, test_mode: !boldSettings.test_mode})}
               className={`relative w-12 h-6 rounded-full transition-colors ${
-                payuSettings.test_mode ? 'bg-orange-600' : 'bg-slate-300 dark:bg-slate-600'
+                boldSettings.test_mode ? 'bg-orange-600' : 'bg-slate-300 dark:bg-slate-600'
               }`}
-              data-testid="payu-test-mode"
+              data-testid="bold-test-mode"
             >
               <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                payuSettings.test_mode ? 'translate-x-7' : 'translate-x-1'
+                boldSettings.test_mode ? 'translate-x-7' : 'translate-x-1'
               }`} />
             </button>
           </div>
           
           <button
-            onClick={savePayuSettings}
+            onClick={saveBoldSettings}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium disabled:opacity-50"
-            data-testid="save-payu-btn"
+            data-testid="save-bold-btn"
           >
             <Save className="w-4 h-4" />
-            {saving ? 'Saving...' : 'Save PayU Settings'}
+            {saving ? 'Saving...' : 'Save BOLD.CO Settings'}
           </button>
+
+          {/* Webhook Configuration Info */}
+          <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h3 className="font-medium mb-3">Webhook Configuration</h3>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                Configure the following webhook URL in your BOLD.CO merchant panel to receive payment notifications:
+              </p>
+              <div className="bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                <code className="text-xs text-slate-700 dark:text-slate-300 break-all select-all">
+                  {window.location.origin}/api/public/bold-webhook
+                </code>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
