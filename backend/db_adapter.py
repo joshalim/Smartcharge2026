@@ -92,13 +92,39 @@ class PostgresCollection:
         """Find single record"""
         async with async_session() as session:
             query = select(self.model)
-            for key, value in filters.items():
-                if hasattr(self.model, key):
-                    query = query.where(getattr(self.model, key) == value)
+            query = self._apply_filters(query, filters)
             
             result = await session.execute(query)
             row = result.scalar_one_or_none()
             return model_to_dict(row)
+    
+    def _apply_filters(self, query, filters: dict):
+        """Apply filters to query, handling MongoDB-style operators"""
+        for key, value in filters.items():
+            if not hasattr(self.model, key):
+                continue
+            column = getattr(self.model, key)
+            
+            if isinstance(value, dict):
+                # Handle MongoDB-style operators
+                for op, op_value in value.items():
+                    if op == '$ne':
+                        query = query.where(column != op_value)
+                    elif op == '$gt':
+                        query = query.where(column > op_value)
+                    elif op == '$gte':
+                        query = query.where(column >= op_value)
+                    elif op == '$lt':
+                        query = query.where(column < op_value)
+                    elif op == '$lte':
+                        query = query.where(column <= op_value)
+                    elif op == '$in':
+                        query = query.where(column.in_(op_value))
+                    elif op == '$nin':
+                        query = query.where(~column.in_(op_value))
+            else:
+                query = query.where(column == value)
+        return query
     
     async def find_all(self, filters: dict = None, sort_by: str = None, 
                        sort_desc: bool = False, limit: int = None, skip: int = None) -> List[dict]:
@@ -107,12 +133,7 @@ class PostgresCollection:
             query = select(self.model)
             
             if filters:
-                for key, value in filters.items():
-                    if hasattr(self.model, key):
-                        if isinstance(value, dict) and '$ne' in value:
-                            query = query.where(getattr(self.model, key) != value['$ne'])
-                        else:
-                            query = query.where(getattr(self.model, key) == value)
+                query = self._apply_filters(query, filters)
             
             if sort_by and hasattr(self.model, sort_by):
                 col = getattr(self.model, sort_by)
@@ -148,9 +169,28 @@ class PostgresCollection:
             prepared = prepare_data(update_data, self.model)
             
             query = update(self.model)
+            # Apply filters with operator support
             for key, value in filters.items():
-                if hasattr(self.model, key):
-                    query = query.where(getattr(self.model, key) == value)
+                if not hasattr(self.model, key):
+                    continue
+                column = getattr(self.model, key)
+                
+                if isinstance(value, dict):
+                    for op, op_value in value.items():
+                        if op == '$ne':
+                            query = query.where(column != op_value)
+                        elif op == '$gt':
+                            query = query.where(column > op_value)
+                        elif op == '$gte':
+                            query = query.where(column >= op_value)
+                        elif op == '$lt':
+                            query = query.where(column < op_value)
+                        elif op == '$lte':
+                            query = query.where(column <= op_value)
+                        elif op == '$in':
+                            query = query.where(column.in_(op_value))
+                else:
+                    query = query.where(column == value)
             
             query = query.values(**prepared)
             result = await session.execute(query)
@@ -179,12 +219,23 @@ class PostgresCollection:
     
     async def count(self, filters: dict = None) -> int:
         """Count records"""
+        if self.model is None:
+            return 0
         async with async_session() as session:
             query = select(func.count()).select_from(self.model)
             if filters:
                 for key, value in filters.items():
-                    if hasattr(self.model, key):
-                        query = query.where(getattr(self.model, key) == value)
+                    if not hasattr(self.model, key):
+                        continue
+                    column = getattr(self.model, key)
+                    if isinstance(value, dict):
+                        for op, op_value in value.items():
+                            if op == '$ne':
+                                query = query.where(column != op_value)
+                            elif op == '$in':
+                                query = query.where(column.in_(op_value))
+                    else:
+                        query = query.where(column == value)
             result = await session.execute(query)
             return result.scalar() or 0
     

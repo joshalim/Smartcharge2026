@@ -12,6 +12,7 @@ function Chargers() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
+    charger_id: '',
     name: '',
     location: '',
     model: '',
@@ -40,9 +41,11 @@ function Chargers() {
     e.preventDefault();
     try {
       const payload = {
-        ...formData,
-        max_power: parseFloat(formData.max_power),
-        connector_types: formData.connector_types.filter(t => t)
+        charger_id: formData.charger_id,
+        name: formData.name,
+        location: formData.location,
+        connectors: formData.connector_types.filter(t => t),
+        status: formData.status
       };
 
       if (editingId) {
@@ -55,20 +58,21 @@ function Chargers() {
       fetchChargers();
     } catch (error) {
       console.error('Failed to save charger:', error);
-      alert('Failed to save charger');
+      alert('Failed to save charger: ' + (error.response?.data?.detail || error.message));
     }
   };
 
   const startEdit = (charger) => {
     setEditingId(charger.id);
     setFormData({
-      name: charger.name,
-      location: charger.location,
-      model: charger.model,
-      serial_number: charger.serial_number,
-      connector_types: charger.connector_types,
-      max_power: charger.max_power.toString(),
-      status: charger.status,
+      charger_id: charger.charger_id || '',
+      name: charger.name || '',
+      location: charger.location || '',
+      model: charger.model || '',
+      serial_number: charger.serial_number || '',
+      connector_types: charger.connectors || charger.connector_types || [],
+      max_power: charger.max_power?.toString() || '',
+      status: charger.status || 'Available',
     });
     setShowForm(true);
   };
@@ -86,6 +90,7 @@ function Chargers() {
 
   const resetForm = () => {
     setFormData({
+      charger_id: '',
       name: '',
       location: '',
       model: '',
@@ -153,7 +158,20 @@ function Chargers() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Name</label>
+                <label className="block text-sm font-medium mb-2">Charger ID *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.charger_id}
+                  onChange={(e) => setFormData({...formData, charger_id: e.target.value})}
+                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                  placeholder="CHG-001"
+                  disabled={!!editingId}
+                />
+                {!editingId && <p className="text-xs text-slate-500 mt-1">Unique identifier for OCPP</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Name *</label>
                 <input
                   type="text"
                   required
@@ -167,45 +185,10 @@ function Chargers() {
                 <label className="block text-sm font-medium mb-2">Location</label>
                 <input
                   type="text"
-                  required
                   value={formData.location}
                   onChange={(e) => setFormData({...formData, location: e.target.value})}
                   className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
                   placeholder="Building B, Floor 1"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Model</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.model}
-                  onChange={(e) => setFormData({...formData, model: e.target.value})}
-                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                  placeholder="ABB Terra HP"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Serial Number</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.serial_number}
-                  onChange={(e) => setFormData({...formData, serial_number: e.target.value})}
-                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                  placeholder="THP-2024-001"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-2">Max Power (kW)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  required
-                  value={formData.max_power}
-                  onChange={(e) => setFormData({...formData, max_power: e.target.value})}
-                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                  placeholder="150"
                 />
               </div>
               <div>
@@ -278,7 +261,6 @@ function Chargers() {
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900 dark:text-slate-100">{charger.name}</h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{charger.model}</p>
                   </div>
                 </div>
                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(charger.status)}`}>
@@ -288,21 +270,19 @@ function Chargers() {
               
               <div className="space-y-2 mb-4">
                 <div className="flex items-center gap-2 text-sm">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-600 dark:text-slate-400">{charger.location}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Power className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-600 dark:text-slate-400">{charger.max_power} kW</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
                   <Activity className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-600 dark:text-slate-400">{charger.serial_number}</span>
+                  <span className="text-slate-600 dark:text-slate-400">ID: {charger.charger_id}</span>
                 </div>
+                {charger.location && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span className="text-slate-600 dark:text-slate-400">{charger.location}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex flex-wrap gap-1 mb-4">
-                {charger.connector_types.map(type => (
+                {(charger.connectors || []).map(type => (
                   <span key={type} className="px-2 py-1 bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 text-xs font-medium rounded-full">
                     {type}
                   </span>
