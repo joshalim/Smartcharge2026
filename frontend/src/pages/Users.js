@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Users as UsersIcon, Trash2, Shield, CreditCard, Plus, X, DollarSign, Edit, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { Users as UsersIcon, Trash2, Shield, CreditCard, Plus, X, DollarSign, Edit, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Download, Phone, MessageCircle } from 'lucide-react';
 import { formatCOP } from '../utils/currency';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -17,9 +17,11 @@ function Users() {
     email: '',
     password: '',
     role: 'user',
+    phone: '',
     rfid_card_number: '',
     rfid_balance: 0,
-    placa: ''
+    placa: '',
+    whatsapp_enabled: true
   });
   
   // Top Up Modal State
