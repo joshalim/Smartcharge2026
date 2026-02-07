@@ -376,6 +376,120 @@ function Transactions() {
         </div>
       </div>
 
+      {/* Create Transaction Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-xl p-6 w-full max-w-lg shadow-2xl">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>
+                Add New Transaction
+              </h3>
+              <button onClick={() => setShowCreateModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">TxID *</label>
+                <input
+                  type="text"
+                  value={createForm.tx_id}
+                  onChange={(e) => setCreateForm({ ...createForm, tx_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                  placeholder="e.g., TX-001"
+                  data-testid="create-txid"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Station *</label>
+                  <input
+                    type="text"
+                    value={createForm.station}
+                    onChange={(e) => setCreateForm({ ...createForm, station: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                    placeholder="e.g., Station-A"
+                    data-testid="create-station"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Connector</label>
+                  <input
+                    type="text"
+                    value={createForm.connector}
+                    onChange={(e) => setCreateForm({ ...createForm, connector: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                    placeholder="e.g., 1"
+                    data-testid="create-connector"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Account</label>
+                <input
+                  type="text"
+                  value={createForm.account}
+                  onChange={(e) => setCreateForm({ ...createForm, account: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                  placeholder="e.g., User001"
+                  data-testid="create-account"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Start Time</label>
+                  <input
+                    type="datetime-local"
+                    value={createForm.start_time}
+                    onChange={(e) => setCreateForm({ ...createForm, start_time: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                    data-testid="create-start-time"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">End Time</label>
+                  <input
+                    type="datetime-local"
+                    value={createForm.end_time}
+                    onChange={(e) => setCreateForm({ ...createForm, end_time: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                    data-testid="create-end-time"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Meter Value (kW.h) *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={createForm.meter_value}
+                  onChange={(e) => setCreateForm({ ...createForm, meter_value: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                  placeholder="e.g., 15.5"
+                  data-testid="create-meter-value"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createTransaction}
+                disabled={creating}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md disabled:opacity-50"
+                data-testid="create-submit-btn"
+              >
+                {creating ? 'Creating...' : 'Create Transaction'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showBulkActions && selectedTxs.length > 0 && (
         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6" data-testid="bulk-actions-panel">
           <h3 className="text-lg font-bold mb-4" style={{ fontFamily: 'Chivo, sans-serif' }}>
