@@ -147,9 +147,11 @@ async def ocpp_db_callback(event_type: str, data: dict):
             await session.commit()
         
         elif event_type == 'transaction_stopped':
+            # Query by transaction_id and charger_id to handle duplicate transaction IDs
             result = await session.execute(
                 select(OCPPTransaction).where(
                     OCPPTransaction.transaction_id == data['transaction_id'],
+                    OCPPTransaction.charger_id == data.get('charger_id'),
                     OCPPTransaction.status == 'active'
                 )
             )
