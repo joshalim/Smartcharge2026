@@ -147,7 +147,39 @@ function Settings() {
     }
   };
 
+  const changePassword = async () => {
+    if (!passwordData.current_password || !passwordData.new_password) {
+      showMessage('error', 'Please fill in all password fields');
+      return;
+    }
+    if (passwordData.new_password !== passwordData.confirm_password) {
+      showMessage('error', 'New passwords do not match');
+      return;
+    }
+    if (passwordData.new_password.length < 6) {
+      showMessage('error', 'New password must be at least 6 characters');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      await axios.post(`${API}/auth/change-password`, {
+        current_password: passwordData.current_password,
+        new_password: passwordData.new_password
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      showMessage('success', 'Password changed successfully!');
+      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (error) {
+      showMessage('error', error.response?.data?.detail || 'Failed to change password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const tabs = [
+    { id: 'account', name: 'Account', icon: User },
     { id: 'payu', name: 'PayU Colombia', icon: CreditCard },
     { id: 'sendgrid', name: 'Email (SendGrid)', icon: Mail },
     { id: 'webhook', name: 'Invoice Webhook', icon: Webhook },
