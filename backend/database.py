@@ -39,6 +39,7 @@ class User(Base):
     name = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     role = Column(String, default="user")  # admin, user, viewer
+    phone = Column(String, nullable=True)  # Phone number for WhatsApp notifications
     pricing_group_id = Column(String, ForeignKey("pricing_groups.id", ondelete="SET NULL"), nullable=True)
     # RFID fields - each user has one RFID card
     rfid_card_number = Column(String, unique=True, nullable=True, index=True)
@@ -46,6 +47,8 @@ class User(Base):
     rfid_status = Column(String, default="active")  # active, inactive, blocked
     # Vehicle registration (PLACA) - optional
     placa = Column(String, nullable=True)
+    # WhatsApp notification preferences
+    whatsapp_enabled = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
