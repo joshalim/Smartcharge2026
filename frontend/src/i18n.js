@@ -175,6 +175,7 @@ const resources = {
       'nav.pricingGroups': 'Grupos de Precios',
       'nav.chargers': 'Cargadores',
       'nav.reports': 'Reportes',
+      'nav.expenses': 'Gastos',
       'nav.settings': 'Configuración',
       'nav.logout': 'Cerrar Sesión',
       
