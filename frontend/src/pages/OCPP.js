@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Activity, Zap, CheckCircle, XCircle, Clock, Server, Radio, Play, Square, AlertCircle } from 'lucide-react';
+import { Activity, Zap, CheckCircle, XCircle, Clock, Server, Radio, Play, Square, AlertCircle, Wifi, WifiOff } from 'lucide-react';
+import useOCPPWebSocket from '../hooks/useOCPPWebSocket';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -15,14 +16,19 @@ function OCPP() {
   const [actionLoading, setActionLoading] = useState(null);
   const [startModal, setStartModal] = useState({ open: false, charger: null });
   const [idTag, setIdTag] = useState('');
+  
+  // WebSocket hook for real-time updates
+  const { 
+    connected: wsConnected, 
+    onlineChargers: wsOnlineChargers,
+    chargerStatuses: wsChargerStatuses,
+    activeTransactions: wsActiveTransactions,
+    lastEvent,
+    addEventListener
+  } = useOCPPWebSocket();
 
-  useEffect(() => {
-    fetchOCPPData();
-    const interval = setInterval(fetchOCPPData, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchOCPPData = async () => {
+  // Fetch initial data
+  const fetchOCPPData = useCallback(async () => {
     try {
       const [statusRes, bootsRes, txRes, chargersRes] = await Promise.all([
         axios.get(`${API}/ocpp/status`),
@@ -39,7 +45,32 @@ function OCPP() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchOCPPData();
+  }, [fetchOCPPData]);
+
+  // Listen for WebSocket events and update data
+  useEffect(() => {
+    const removeListener = addEventListener((event) => {
+      if (event.event === 'transaction_started' || event.event === 'transaction_stopped') {
+        // Refresh transactions on transaction events
+        fetchOCPPData();
+      } else if (event.event === 'charger_connected' || event.event === 'charger_disconnected') {
+        // Update charger status
+        fetchOCPPData();
+      }
+    });
+    return removeListener;
+  }, [addEventListener, fetchOCPPData]);
+
+  // Fallback polling every 30 seconds (reduced from 5s since we have WebSocket)
+  useEffect(() => {
+    const interval = setInterval(fetchOCPPData, 30000);
+    return () => clearInterval(interval);
+  }, [fetchOCPPData]);
 
   const handleRemoteStart = async (charger) => {
     if (!idTag.trim()) {
