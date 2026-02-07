@@ -97,11 +97,13 @@ async def get_user(
             email=user.email,
             name=user.name,
             role=user.role,
+            phone=user.phone,
             pricing_group_id=user.pricing_group_id,
             rfid_card_number=user.rfid_card_number,
             rfid_balance=user.rfid_balance or 0.0,
             rfid_status=user.rfid_status or "active",
             placa=user.placa,
+            whatsapp_enabled=user.whatsapp_enabled if hasattr(user, 'whatsapp_enabled') else True,
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
@@ -142,10 +144,12 @@ async def create_user(
             name=user_data.name,
             password_hash=password_hash,
             role=user_data.role,
+            phone=user_data.phone,
             rfid_card_number=user_data.rfid_card_number,
             rfid_balance=user_data.rfid_balance or 0.0,
             rfid_status="active",
-            placa=user_data.placa
+            placa=user_data.placa,
+            whatsapp_enabled=user_data.whatsapp_enabled if user_data.whatsapp_enabled is not None else True
         )
         session.add(new_user)
         await session.commit()
@@ -156,11 +160,13 @@ async def create_user(
             email=new_user.email,
             name=new_user.name,
             role=new_user.role,
+            phone=new_user.phone,
             pricing_group_id=new_user.pricing_group_id,
             rfid_card_number=new_user.rfid_card_number,
             rfid_balance=new_user.rfid_balance or 0.0,
             rfid_status=new_user.rfid_status or "active",
             placa=new_user.placa,
+            whatsapp_enabled=new_user.whatsapp_enabled if hasattr(new_user, 'whatsapp_enabled') else True,
             created_at=new_user.created_at.isoformat() if new_user.created_at else None
         )
 
