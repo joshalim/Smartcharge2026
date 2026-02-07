@@ -289,6 +289,20 @@ class InvoiceWebhookLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class Expense(Base):
+    """Expense tracking for financial reporting"""
+    __tablename__ = "expenses"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    name = Column(String, nullable=False)  # Expense name
+    date = Column(String, nullable=False)  # Date of expense (YYYY-MM-DD)
+    cost = Column(Float, nullable=False, default=0)  # Cost in COP
+    reason = Column(Text)  # Cost reason/description
+    created_by = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
 # ============== Database Functions ==============
 
 async def init_db():
