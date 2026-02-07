@@ -189,6 +189,8 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 33. ✅ **FEATURE**: QR Code Charging - Public page for users to scan QR, select connector, choose amount, and pay via BOLD.CO (Feb 7, 2026)
 34. ✅ **FEATURE**: QR Code Generator - Settings page shows QR codes with download buttons + copyable URLs for each charger's connectors (CCS2, CHADEMO, J1772) (Feb 7, 2026)
 35. ✅ **INTEGRATION**: Replaced PayU with BOLD.CO payment gateway - Supports Credit Cards, PSE, Bancolombia, Nequi (Feb 7, 2026)
+36. ✅ **FEATURE**: Phone number field added to users with WhatsApp notification toggle (Feb 7, 2026)
+37. ✅ **INTEGRATION**: Twilio WhatsApp notifications - Payment confirmation, charging started/completed, low balance, top-up, welcome messages (Feb 7, 2026)
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
