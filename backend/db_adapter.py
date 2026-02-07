@@ -1,13 +1,12 @@
 """
-Database Abstraction Layer - Provides MongoDB-like interface over PostgreSQL
-This allows minimal changes to existing code while using PostgreSQL
+PostgreSQL Database Adapter for SmartCharge
+Pure PostgreSQL implementation - no MongoDB compatibility layer
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete, func, or_, and_, text
+from sqlalchemy import select, update, delete, func, or_, and_
 from sqlalchemy.dialects.postgresql import insert
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timezone
-import json
 
 from database import (
     async_session, 
@@ -27,392 +26,307 @@ MODEL_MAP = {
     'rfid_history': RFIDHistory,
     'ocpp_sessions': OCPPSession,
     'app_config': AppConfig,
-    'payu_config': AppConfig,
-    'sendgrid_config': AppConfig,
-    'invoice_webhook_config': AppConfig,
 }
 
-# Fields that should be datetime objects
-DATETIME_FIELDS = ['created_at', 'updated_at', 'timestamp', 'last_heartbeat', 'payment_date', 'start_time', 'end_time']
+# Datetime fields that need conversion
+DATETIME_FIELDS = ['created_at', 'updated_at', 'timestamp', 'last_heartbeat', 'payment_date']
 
 
-def convert_datetime_fields(document: dict, model) -> dict:
-    """Convert string datetime fields to datetime objects for PostgreSQL"""
-    result = document.copy()
-    for key, value in result.items():
-        if value is None:
+def to_datetime(value):
+    """Convert string to datetime if needed"""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            if 'T' in value:
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            return datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+        except:
+            return datetime.now(timezone.utc)
+    return value
+
+
+def prepare_data(data: dict) -> dict:
+    """Prepare data for database insertion/update"""
+    result = {}
+    for key, value in data.items():
+        if key == '_id':
             continue
-        # Check if this is a datetime field
-        if key in DATETIME_FIELDS and isinstance(value, str):
-            try:
-                # Try ISO format first
-                if 'T' in value:
-                    result[key] = datetime.fromisoformat(value.replace('Z', '+00:00'))
-                else:
-                    result[key] = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-            except (ValueError, TypeError):
-                # If conversion fails, use current time
-                result[key] = datetime.now(timezone.utc)
+        if key in DATETIME_FIELDS:
+            result[key] = to_datetime(value)
+        else:
+            result[key] = value
     return result
 
 
-def model_to_dict(model) -> dict:
+def model_to_dict(obj) -> dict:
     """Convert SQLAlchemy model to dictionary"""
-    if model is None:
+    if obj is None:
         return None
     result = {}
-    for column in model.__table__.columns:
-        value = getattr(model, column.name)
-        if hasattr(value, 'isoformat'):
+    for column in obj.__table__.columns:
+        value = getattr(obj, column.name)
+        if isinstance(value, datetime):
             value = value.isoformat()
         result[column.name] = value
     return result
 
 
 class PostgresCollection:
-    """Mimics MongoDB collection interface for PostgreSQL"""
+    """PostgreSQL table wrapper"""
     
-    def __init__(self, collection_name: str):
-        self.collection_name = collection_name
-        self.model = MODEL_MAP.get(collection_name)
+    def __init__(self, table_name: str):
+        self.table_name = table_name
+        self.model = MODEL_MAP.get(table_name)
     
-    async def find_one(self, filter_dict: dict, projection: dict = None) -> Optional[dict]:
-        """Find a single document"""
+    async def find_one(self, filters: dict, projection: dict = None) -> Optional[dict]:
+        """Find single record"""
         async with async_session() as session:
             query = select(self.model)
-            
-            for key, value in filter_dict.items():
+            for key, value in filters.items():
                 if hasattr(self.model, key):
                     query = query.where(getattr(self.model, key) == value)
             
             result = await session.execute(query)
             row = result.scalar_one_or_none()
-            
-            if row is None:
-                return None
-            
-            doc = model_to_dict(row)
-            
-            # Handle projection (exclude fields)
-            if projection:
-                for field, include in projection.items():
-                    if include == 0 and field in doc:
-                        del doc[field]
-            
-            return doc
+            return model_to_dict(row)
     
-    def find(self, filter_dict: dict = None, projection: dict = None):
-        """Find multiple documents - returns cursor (not async)"""
-        return PostgresCursor(self.model, filter_dict, projection)
-    
-    async def insert_one(self, document: dict):
-        """Insert a single document"""
+    async def find_all(self, filters: dict = None, sort_by: str = None, 
+                       sort_desc: bool = False, limit: int = None, skip: int = None) -> List[dict]:
+        """Find multiple records"""
         async with async_session() as session:
-            # Remove _id if present (MongoDB artifact)
-            document.pop('_id', None)
+            query = select(self.model)
             
-            # Convert datetime strings to datetime objects
-            converted_doc = convert_datetime_fields(document, self.model)
+            if filters:
+                for key, value in filters.items():
+                    if hasattr(self.model, key):
+                        if isinstance(value, dict) and '$ne' in value:
+                            query = query.where(getattr(self.model, key) != value['$ne'])
+                        else:
+                            query = query.where(getattr(self.model, key) == value)
             
-            obj = self.model(**converted_doc)
+            if sort_by and hasattr(self.model, sort_by):
+                col = getattr(self.model, sort_by)
+                query = query.order_by(col.desc() if sort_desc else col)
+            
+            if skip:
+                query = query.offset(skip)
+            if limit:
+                query = query.limit(limit)
+            
+            result = await session.execute(query)
+            return [model_to_dict(row) for row in result.scalars().all()]
+    
+    async def insert_one(self, data: dict):
+        """Insert single record"""
+        async with async_session() as session:
+            prepared = prepare_data(data)
+            obj = self.model(**prepared)
             session.add(obj)
             await session.commit()
-            return type('InsertResult', (), {'inserted_id': document.get('id')})()
+            return {'inserted_id': data.get('id')}
     
-    async def update_one(self, filter_dict: dict, update_dict: dict):
-        """Update a single document"""
+    async def update_one(self, filters: dict, data: dict):
+        """Update single record"""
         async with async_session() as session:
-            # Handle $set operator
-            if '$set' in update_dict:
-                update_data = update_dict['$set']
+            # Handle $set operator for compatibility
+            if '$set' in data:
+                update_data = data['$set']
             else:
-                update_data = update_dict
+                update_data = data
             
-            # Convert datetime strings to datetime objects
-            update_data = convert_datetime_fields(update_data, self.model)
+            prepared = prepare_data(update_data)
             
             query = update(self.model)
-            for key, value in filter_dict.items():
+            for key, value in filters.items():
                 if hasattr(self.model, key):
                     query = query.where(getattr(self.model, key) == value)
             
-            query = query.values(**update_data)
+            query = query.values(**prepared)
             result = await session.execute(query)
             await session.commit()
-            
-            return type('UpdateResult', (), {
-                'modified_count': result.rowcount,
-                'matched_count': result.rowcount
-            })()
+            return {'modified_count': result.rowcount}
     
-    async def delete_one(self, filter_dict: dict):
-        """Delete a single document"""
+    async def update_many(self, filters: dict, data: dict):
+        """Update multiple records"""
+        return await self.update_one(filters, data)
+    
+    async def delete_one(self, filters: dict):
+        """Delete single record"""
         async with async_session() as session:
             query = delete(self.model)
-            for key, value in filter_dict.items():
+            for key, value in filters.items():
                 if hasattr(self.model, key):
                     query = query.where(getattr(self.model, key) == value)
             
             result = await session.execute(query)
             await session.commit()
-            
-            return type('DeleteResult', (), {'deleted_count': result.rowcount})()
+            return {'deleted_count': result.rowcount}
     
-    async def delete_many(self, filter_dict: dict):
-        """Delete multiple documents"""
-        async with async_session() as session:
-            query = delete(self.model)
-            
-            # Handle $in operator
-            for key, value in filter_dict.items():
-                if isinstance(value, dict) and '$in' in value:
-                    if hasattr(self.model, key):
-                        query = query.where(getattr(self.model, key).in_(value['$in']))
-                elif hasattr(self.model, key):
-                    query = query.where(getattr(self.model, key) == value)
-            
-            result = await session.execute(query)
-            await session.commit()
-            
-            return type('DeleteResult', (), {'deleted_count': result.rowcount})()
+    async def delete_many(self, filters: dict):
+        """Delete multiple records"""
+        return await self.delete_one(filters)
     
-    async def update_many(self, filter_dict: dict, update_dict: dict):
-        """Update multiple documents"""
-        async with async_session() as session:
-            # Handle $set operator
-            if '$set' in update_dict:
-                update_data = update_dict['$set']
-            else:
-                update_data = update_dict
-            
-            query = update(self.model)
-            for key, value in filter_dict.items():
-                if hasattr(self.model, key):
-                    query = query.where(getattr(self.model, key) == value)
-            
-            query = query.values(**update_data)
-            result = await session.execute(query)
-            await session.commit()
-            
-            return type('UpdateResult', (), {
-                'modified_count': result.rowcount,
-                'matched_count': result.rowcount
-            })()
-    
-    async def count_documents(self, filter_dict: dict = None) -> int:
-        """Count documents matching filter"""
+    async def count(self, filters: dict = None) -> int:
+        """Count records"""
         async with async_session() as session:
             query = select(func.count()).select_from(self.model)
-            
-            if filter_dict:
-                for key, value in filter_dict.items():
+            if filters:
+                for key, value in filters.items():
                     if hasattr(self.model, key):
                         query = query.where(getattr(self.model, key) == value)
-            
             result = await session.execute(query)
             return result.scalar() or 0
     
-    async def distinct(self, field: str, filter_dict: dict = None) -> List:
-        """Get distinct values for a field"""
+    async def distinct(self, field: str, filters: dict = None) -> List:
+        """Get distinct values"""
         async with async_session() as session:
             if not hasattr(self.model, field):
                 return []
             
             query = select(getattr(self.model, field)).distinct()
-            
-            if filter_dict:
-                for key, value in filter_dict.items():
+            if filters:
+                for key, value in filters.items():
                     if hasattr(self.model, key):
                         query = query.where(getattr(self.model, key) == value)
             
             result = await session.execute(query)
             return [row[0] for row in result.fetchall() if row[0] is not None]
     
-    def aggregate(self, pipeline: List[dict]):
-        """
-        Simulate MongoDB aggregation pipeline.
-        Returns an AggregationCursor that can be awaited.
-        """
-        return AggregationCursor(self.model, pipeline)
-
-
-class AggregationCursor:
-    """Simulates MongoDB aggregation cursor for PostgreSQL"""
-    
-    def __init__(self, model, pipeline: List[dict]):
-        self.model = model
-        self.pipeline = pipeline
-    
-    async def to_list(self, length: int = None) -> List[dict]:
-        """Execute aggregation and return results"""
+    async def sum(self, field: str, filters: dict = None) -> float:
+        """Sum a field"""
         async with async_session() as session:
-            # For simple $group aggregations, translate to SQL
-            results = []
+            if not hasattr(self.model, field):
+                return 0
             
-            # Check for $group stage
-            group_stage = None
-            match_stage = None
+            query = select(func.sum(getattr(self.model, field)))
+            if filters:
+                for key, value in filters.items():
+                    if hasattr(self.model, key):
+                        query = query.where(getattr(self.model, key) == value)
             
-            for stage in self.pipeline:
-                if '$group' in stage:
-                    group_stage = stage['$group']
-                if '$match' in stage:
-                    match_stage = stage['$match']
-            
-            if group_stage:
-                # Handle common aggregation patterns
-                group_id = group_stage.get('_id')
-                
-                # Simple count/sum aggregation
-                if 'total' in group_stage or 'count' in group_stage:
-                    # Get all records and compute in Python
-                    query = select(self.model)
-                    if match_stage:
-                        for key, value in match_stage.items():
-                            if hasattr(self.model, key):
-                                query = query.where(getattr(self.model, key) == value)
-                    
-                    result = await session.execute(query)
-                    rows = result.scalars().all()
-                    
-                    # Compute aggregations
-                    total_sum = {}
-                    count = len(rows)
-                    
-                    for field_name, agg_op in group_stage.items():
-                        if field_name == '_id':
-                            continue
-                        if isinstance(agg_op, dict):
-                            if '$sum' in agg_op:
-                                sum_field = agg_op['$sum']
-                                if isinstance(sum_field, str) and sum_field.startswith('$'):
-                                    field = sum_field[1:]
-                                    total_sum[field_name] = sum(
-                                        getattr(row, field, 0) or 0 
-                                        for row in rows
-                                    )
-                                elif sum_field == 1:
-                                    total_sum[field_name] = count
-                    
-                    results = [{'_id': None, **total_sum}]
-            else:
-                # No aggregation, just return empty
-                results = []
-            
-            return results
+            result = await session.execute(query)
+            return result.scalar() or 0
+    
+    # Compatibility methods for existing code
+    def find(self, filters: dict = None, projection: dict = None):
+        """Returns a cursor-like object for compatibility"""
+        return QueryBuilder(self, filters)
+    
+    async def count_documents(self, filters: dict = None) -> int:
+        """Alias for count()"""
+        return await self.count(filters)
+    
+    def aggregate(self, pipeline: list):
+        """Aggregation support"""
+        return AggregationBuilder(self, pipeline)
 
 
-class PostgresCursor:
-    """Async cursor for iterating results"""
+class QueryBuilder:
+    """Query builder for chained operations"""
     
-    def __init__(self, model, filter_dict: dict = None, projection: dict = None):
-        self.model = model
-        self.filter_dict = filter_dict or {}
-        self.projection = projection
-        self._sort_field = None
-        self._sort_order = 1
-        self._limit_value = None
-        self._skip_value = None
+    def __init__(self, collection: PostgresCollection, filters: dict = None):
+        self.collection = collection
+        self.filters = filters or {}
+        self._sort_by = None
+        self._sort_desc = False
+        self._limit_val = None
+        self._skip_val = None
     
-    def sort(self, field: str, order: int = 1):
+    def sort(self, field_or_list, direction=1):
         """Set sort order"""
-        self._sort_field = field
-        self._sort_order = order
+        if isinstance(field_or_list, list):
+            # Handle [(field, direction)] format
+            if field_or_list:
+                self._sort_by = field_or_list[0][0]
+                self._sort_desc = field_or_list[0][1] == -1
+        else:
+            self._sort_by = field_or_list
+            self._sort_desc = direction == -1
         return self
     
     def limit(self, n: int):
-        """Limit results"""
-        self._limit_value = n
+        self._limit_val = n
         return self
     
     def skip(self, n: int):
-        """Skip results"""
-        self._skip_value = n
+        self._skip_val = n
         return self
     
     async def to_list(self, length: int = None) -> List[dict]:
-        """Convert cursor to list"""
-        results = []
-        async for doc in self:
-            results.append(doc)
-            if length and len(results) >= length:
-                break
-        return results
+        return await self.collection.find_all(
+            filters=self.filters,
+            sort_by=self._sort_by,
+            sort_desc=self._sort_desc,
+            limit=self._limit_val or length,
+            skip=self._skip_val
+        )
     
     def __aiter__(self):
         return self
     
     async def __anext__(self):
         if not hasattr(self, '_results'):
-            await self._execute()
-        
+            self._results = await self.to_list()
+            self._index = 0
         if self._index >= len(self._results):
             raise StopAsyncIteration
-        
         result = self._results[self._index]
         self._index += 1
         return result
+
+
+class AggregationBuilder:
+    """Simple aggregation support"""
     
-    async def _execute(self):
-        """Execute the query"""
-        async with async_session() as session:
-            query = select(self.model)
-            
-            # Apply filters
-            for key, value in self.filter_dict.items():
-                if isinstance(value, dict):
-                    # Handle operators
-                    if '$gte' in value:
-                        if hasattr(self.model, key):
-                            query = query.where(getattr(self.model, key) >= value['$gte'])
-                    if '$lte' in value:
-                        if hasattr(self.model, key):
-                            query = query.where(getattr(self.model, key) <= value['$lte'])
-                    if '$in' in value:
-                        if hasattr(self.model, key):
-                            query = query.where(getattr(self.model, key).in_(value['$in']))
-                    if '$ne' in value:
-                        if hasattr(self.model, key):
-                            query = query.where(getattr(self.model, key) != value['$ne'])
-                elif hasattr(self.model, key):
-                    query = query.where(getattr(self.model, key) == value)
-            
-            # Apply sort
-            if self._sort_field and hasattr(self.model, self._sort_field):
-                if self._sort_order == -1:
-                    query = query.order_by(getattr(self.model, self._sort_field).desc())
-                else:
-                    query = query.order_by(getattr(self.model, self._sort_field).asc())
-            
-            # Apply skip
-            if self._skip_value:
-                query = query.offset(self._skip_value)
-            
-            # Apply limit
-            if self._limit_value:
-                query = query.limit(self._limit_value)
-            
-            result = await session.execute(query)
-            rows = result.scalars().all()
-            
-            self._results = []
-            for row in rows:
-                doc = model_to_dict(row)
-                # Handle projection
-                if self.projection:
-                    for field, include in self.projection.items():
-                        if include == 0 and field in doc:
-                            del doc[field]
-                self._results.append(doc)
-            
-            self._index = 0
+    def __init__(self, collection: PostgresCollection, pipeline: list):
+        self.collection = collection
+        self.pipeline = pipeline
+    
+    async def to_list(self, length: int = None) -> List[dict]:
+        """Execute aggregation"""
+        # Parse pipeline stages
+        match_filters = {}
+        group_fields = {}
+        
+        for stage in self.pipeline:
+            if '$match' in stage:
+                match_filters = stage['$match']
+            if '$group' in stage:
+                group_fields = stage['$group']
+        
+        # Simple aggregation - get totals
+        result = {'_id': None}
+        
+        for field_name, operation in group_fields.items():
+            if field_name == '_id':
+                continue
+            if isinstance(operation, dict):
+                if '$sum' in operation:
+                    sum_target = operation['$sum']
+                    if isinstance(sum_target, str) and sum_target.startswith('$'):
+                        db_field = sum_target[1:]
+                        result[field_name] = await self.collection.sum(db_field, match_filters)
+                    elif sum_target == 1:
+                        result[field_name] = await self.collection.count(match_filters)
+        
+        return [result]
 
 
 class PostgresDB:
-    """Main database class mimicking MongoDB interface"""
+    """Database interface"""
+    
+    def __init__(self):
+        self._collections = {}
     
     def __getattr__(self, name: str) -> PostgresCollection:
-        return PostgresCollection(name)
+        if name.startswith('_'):
+            raise AttributeError(name)
+        if name not in self._collections:
+            self._collections[name] = PostgresCollection(name)
+        return self._collections[name]
 
 
 # Global database instance
