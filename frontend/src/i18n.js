@@ -297,6 +297,25 @@ const resources = {
       'pricing.cancel': 'Cancelar',
       'pricing.deleteConfirm': '¿Estás seguro de que deseas eliminar esta regla de precio?',
       
+      // Expenses
+      'expenses.title': 'Gastos',
+      'expenses.subtitle': 'Registrar y gestionar gastos del negocio',
+      'expenses.addNew': 'Agregar Gasto',
+      'expenses.edit': 'Editar Gasto',
+      'expenses.name': 'Nombre del Gasto',
+      'expenses.namePlaceholder': 'ej., Factura de Electricidad',
+      'expenses.date': 'Fecha',
+      'expenses.cost': 'Costo',
+      'expenses.reason': 'Razón',
+      'expenses.reasonPlaceholder': 'Descripción del gasto...',
+      'expenses.actions': 'Acciones',
+      'expenses.totalExpenses': 'Total de Gastos',
+      'expenses.entries': 'registros',
+      'expenses.noExpenses': 'No hay gastos registrados',
+      'expenses.addFirst': 'Agrega tu primer gasto para comenzar',
+      'expenses.searchPlaceholder': 'Buscar gastos...',
+      'expenses.deleteConfirm': '¿Estás seguro de que deseas eliminar este gasto?',
+      
       // Common
       'common.loading': 'Cargando...',
       'common.pleaseWait': 'Por favor espera...',
