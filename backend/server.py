@@ -100,14 +100,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS
-origins = os.environ.get('CORS_ORIGINS', '*').split(',')
+# CORS - Allow all origins for file uploads
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,  # Must be False when allow_origins is "*"
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Import and register routes
