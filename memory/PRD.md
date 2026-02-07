@@ -24,7 +24,8 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - JWT-based authentication
 - Three roles: Admin, User, Viewer
 - Role-based route protection
-- Demo credentials shown on login page
+- **Password change functionality** for all users via Settings > Account tab
+- Demo credentials removed from login page for security (Feb 2026)
 
 ### 2. User Management ✅
 - Create new users (Admin only)
