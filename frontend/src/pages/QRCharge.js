@@ -177,7 +177,7 @@ function QRCharge() {
           <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 mb-4">
             <p className="text-sm text-orange-700 dark:text-orange-400">
               <AlertCircle className="w-4 h-4 inline mr-1" />
-              PayU payment is not configured. Please contact the station administrator.
+              BOLD.CO payment is not configured. Please contact the station administrator.
             </p>
           </div>
           
