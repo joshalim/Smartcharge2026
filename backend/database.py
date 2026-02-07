@@ -116,12 +116,12 @@ class RFIDHistory(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     card_id = Column(String, ForeignKey("rfid_cards.id", ondelete="CASCADE"), nullable=False, index=True)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now())
-    type = Column(String)  # topup, charge, refund
+    transaction_type = Column(String)  # TOPUP, CHARGE, REFUND
     amount = Column(Float)
-    description = Column(Text)
     balance_before = Column(Float)
     balance_after = Column(Float)
+    notes = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class OCPPSession(Base):
