@@ -365,6 +365,77 @@ psql -U postgres evcharging < C:\Backups\evcharging_backup.sql
 
 ---
 
+## Updating the Application
+
+When you receive updated code files, follow these steps:
+
+### Step 1: Stop Services
+```cmd
+REM If using MASTER SERVER.bat, close both command windows
+REM If using Windows Services:
+sc stop EVChargingBackend
+sc stop EVChargingFrontend
+```
+
+### Step 2: Backup Database (Recommended)
+```cmd
+pg_dump -U postgres evcharging > C:\Backups\evcharging_%date:~-4,4%%date:~-10,2%%date:~-7,2%.sql
+```
+
+### Step 3: Update Backend Files
+Copy these files from the updated source to `C:\Apps\Smartcharge2026\backend\`:
+- `server.py`
+- `database.py`
+- `db_adapter.py`
+
+### Step 4: Install New Dependencies (If Required)
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Step 5: Rebuild Frontend (If Frontend Files Changed)
+```cmd
+cd C:\Apps\Smartcharge2026\frontend
+yarn install
+yarn build
+```
+
+### Step 6: Reset Admin User (If Login Fails)
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+venv\Scripts\activate
+python create_admin.py
+```
+
+### Step 7: Start Services
+```cmd
+REM Use MASTER SERVER.bat
+C:\Apps\Smartcharge2026\MASTER SERVER.bat
+```
+
+---
+
+## Feb 2026 Update - Critical Fix
+
+**Issue:** Login fails, charger creation returns 422 error, transaction import fails.
+
+**Fix:** Updated `database.py` and `db_adapter.py` to include missing database models.
+
+**Files to update:**
+1. `backend/database.py` - Added new models: Settings, PayUPayment, PayUWebhookLog, OCPPBoot, OCPPTransaction, InvoiceWebhookConfig, InvoiceWebhookLog
+2. `backend/db_adapter.py` - Added MODEL_MAP entries for all collections including 'pricing' alias
+
+**After updating, run:**
+```cmd
+cd C:\Apps\Smartcharge2026\backend
+venv\Scripts\activate
+python create_admin.py
+```
+
+---
+
 ## File Structure
 
 ```
