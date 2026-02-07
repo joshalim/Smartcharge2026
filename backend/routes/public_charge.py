@@ -1,23 +1,27 @@
 """
 Public charging routes - QR code based charging without login
-Includes PayU Colombia payment integration
+Includes BOLD.CO Colombia payment integration
 """
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, timezone
 import uuid
-import hashlib
-import hmac
+import httpx
 import os
+import time
 
 from sqlalchemy import select
-from database import async_session, Charger, Transaction, Settings, PayUPayment, PayUWebhookLog
+from database import async_session, Charger, Transaction, Settings, BoldPayment, BoldWebhookLog
 
 router = APIRouter(prefix="/public", tags=["Public Charging"])
 
 # Get frontend URL from environment for redirects
 FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://evadmin-dashboard.preview.emergentagent.com')
+
+# BOLD.CO API Base URL
+BOLD_API_URL = "https://integrations.api.bold.co"
 
 
 class ChargerInfo(BaseModel):
@@ -45,6 +49,7 @@ class ChargeSession(BaseModel):
     status: str
     created_at: str
     payment_url: Optional[str] = None
+    payment_link_id: Optional[str] = None
 
 
 # Pricing per connector type (COP per kWh)
@@ -58,75 +63,112 @@ CONNECTOR_PRICING = {
 DEFAULT_PRICE = 2000.0
 
 
-async def get_payu_settings():
-    """Get PayU settings from database"""
+async def get_bold_settings():
+    """Get BOLD.CO settings from database"""
     async with async_session() as session:
         result = await session.execute(
-            select(Settings).where(Settings.type == "payu")
+            select(Settings).where(Settings.type == "bold")
         )
         settings = result.scalar_one_or_none()
         if settings:
             return {
                 "api_key": settings.api_key,
-                "api_login": settings.api_login,
-                "merchant_id": settings.merchant_id,
-                "account_id": settings.account_id,
                 "test_mode": settings.test_mode if settings.test_mode is not None else True
             }
         return None
 
 
-def generate_payu_signature(api_key: str, merchant_id: str, reference_code: str, amount: float, currency: str = "COP") -> str:
-    """Generate MD5 signature for PayU Colombia"""
-    # PayU Colombia uses MD5 signature
-    # Format: apiKey~merchantId~referenceCode~amount~currency
-    amount_str = f"{amount:.2f}"
-    signature_string = f"{api_key}~{merchant_id}~{reference_code}~{amount_str}~{currency}"
-    return hashlib.md5(signature_string.encode()).hexdigest()
-
-
-def generate_payu_form_url(payu_settings: dict, reference_code: str, amount: float, 
-                           description: str, buyer_email: str, buyer_phone: str = None) -> str:
-    """Generate PayU webcheckout form URL"""
+async def create_bold_payment_link(
+    api_key: str,
+    amount: float,
+    reference: str,
+    description: str,
+    callback_url: str,
+    payer_email: Optional[str] = None
+) -> dict:
+    """
+    Create a payment link using BOLD.CO API
     
-    test_mode = payu_settings.get("test_mode", True)
-    merchant_id = payu_settings.get("merchant_id", "")
-    account_id = payu_settings.get("account_id", "")
-    api_key = payu_settings.get("api_key", "")
+    API Documentation: https://developers.bold.co/pagos-en-linea/api-link-de-pagos
     
-    # PayU webcheckout URLs
-    base_url = "https://sandbox.checkout.payulatam.com/ppp-web-gateway-payu/" if test_mode else "https://checkout.payulatam.com/ppp-web-gateway-payu/"
-    
-    # Generate signature
-    signature = generate_payu_signature(api_key, merchant_id, reference_code, amount)
-    
-    # Build return URLs
-    response_url = f"{FRONTEND_URL}/payment/result?session_id={reference_code}"
-    confirmation_url = f"{FRONTEND_URL}/api/public/payu-webhook"
-    
-    # Build form parameters
-    params = {
-        "merchantId": merchant_id,
-        "accountId": account_id,
-        "description": description,
-        "referenceCode": reference_code,
-        "amount": f"{amount:.2f}",
-        "tax": "0",
-        "taxReturnBase": "0",
-        "currency": "COP",
-        "signature": signature,
-        "test": "1" if test_mode else "0",
-        "buyerEmail": buyer_email or "guest@smartcharge.co",
-        "responseUrl": response_url,
-        "confirmationUrl": confirmation_url,
+    Returns:
+        dict with payment_link (ID) and url (checkout URL)
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"x-api-key {api_key}"
     }
     
-    if buyer_phone:
-        params["telephone"] = buyer_phone
+    # Calculate expiration (24 hours from now in nanoseconds)
+    expiration_nanoseconds = int((time.time() + 86400) * 1e9)
     
-    # Build URL with parameters
-    param_string = "&".join([f"{k}={v}" for k, v in params.items()])
-    return f"{base_url}?{param_string}"
+    payload = {
+        "amount_type": "CLOSE",
+        "amount": {
+            "currency": "COP",
+            "total_amount": int(amount),  # BOLD expects integer for COP
+            "tip_amount": 0
+        },
+        "reference": reference,
+        "description": description[:100],  # Max 100 characters
+        "expiration_date": expiration_nanoseconds,
+        "callback_url": callback_url,
+        "payment_methods": ["CREDIT_CARD", "PSE", "BOTON_BANCOLOMBIA", "NEQUI"]
+    }
+    
+    if payer_email:
+        payload["payer_email"] = payer_email
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{BOLD_API_URL}/online/link/v1",
+            headers=headers,
+            json=payload,
+            timeout=30.0
+        )
+        
+        if response.status_code in [200, 201]:
+            data = response.json()
+            if data.get("errors") and len(data["errors"]) > 0:
+                raise HTTPException(status_code=400, detail=f"BOLD API error: {data['errors']}")
+            
+            return {
+                "payment_link": data.get("payload", {}).get("payment_link"),
+                "url": data.get("payload", {}).get("url")
+            }
+        else:
+            error_msg = f"BOLD API error: {response.status_code} - {response.text}"
+            print(error_msg)
+            raise HTTPException(status_code=500, detail=error_msg)
+
+
+async def get_bold_payment_status(api_key: str, payment_link_id: str) -> dict:
+    """
+    Get payment link status from BOLD.CO API
+    
+    Status values:
+    - ACTIVE: Link is available for payment
+    - PROCESSING: Payment in progress
+    - PAID: Payment successful
+    - REJECTED: Payment rejected
+    - CANCELLED: Payment cancelled
+    - EXPIRED: Link expired
+    """
+    headers = {
+        "Authorization": f"x-api-key {api_key}"
+    }
+    
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"{BOLD_API_URL}/online/link/v1/{payment_link_id}",
+            headers=headers,
+            timeout=30.0
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            return {"status": "UNKNOWN"}
 
 
 @router.get("/charger/{charger_id}", response_model=ChargerInfo)
@@ -185,13 +227,17 @@ async def start_charge_session(request: StartChargeRequest):
         if charger.status not in ["available", "Available", "online", "Online"]:
             raise HTTPException(status_code=400, detail=f"Charger is not available. Status: {charger.status}")
         
+        # Validate minimum amount (BOLD.CO minimum is 1000 COP)
+        if request.amount < 1000:
+            raise HTTPException(status_code=400, detail="Minimum amount is $1,000 COP")
+        
         # Calculate energy based on amount and connector type
         connector_upper = request.connector_type.upper()
         price_per_kwh = CONNECTOR_PRICING.get(connector_upper, DEFAULT_PRICE)
-        estimated_kwh = request.amount / price_per_kwh
         
-        # Create session ID
-        session_id = f"QR-{uuid.uuid4().hex[:8].upper()}"
+        # Create session ID with timestamp for uniqueness
+        timestamp = int(time.time())
+        session_id = f"QR-{uuid.uuid4().hex[:8].upper()}-{timestamp}"
         
         # Create a pending transaction
         new_tx = Transaction(
@@ -210,34 +256,47 @@ async def start_charge_session(request: StartChargeRequest):
         
         session.add(new_tx)
         
-        # Get PayU settings and generate payment URL
-        payu_settings = await get_payu_settings()
+        # Get BOLD settings and create payment link
+        bold_settings = await get_bold_settings()
         payment_url = None
+        payment_link_id = None
         
-        if payu_settings and payu_settings.get("api_key") and payu_settings.get("merchant_id"):
+        if bold_settings and bold_settings.get("api_key"):
             description = f"EV Charging - {charger.name or request.charger_id} - {request.connector_type}"
-            payment_url = generate_payu_form_url(
-                payu_settings=payu_settings,
-                reference_code=session_id,
-                amount=request.amount,
-                description=description,
-                buyer_email=request.email,
-                buyer_phone=request.phone
-            )
+            callback_url = f"{FRONTEND_URL}/payment/result?session_id={session_id}"
             
-            # Store PayU payment record
-            payu_payment = PayUPayment(
-                id=str(uuid.uuid4()),
-                reference_code=session_id,
-                card_number=None,
-                user_id=None,
-                amount=request.amount,
-                buyer_name=request.placa or "Guest",
-                buyer_email=request.email or "guest@smartcharge.co",
-                buyer_phone=request.phone,
-                status="PENDING"
-            )
-            session.add(payu_payment)
+            try:
+                bold_response = await create_bold_payment_link(
+                    api_key=bold_settings["api_key"],
+                    amount=request.amount,
+                    reference=session_id,
+                    description=description,
+                    callback_url=callback_url,
+                    payer_email=request.email
+                )
+                
+                payment_url = bold_response.get("url")
+                payment_link_id = bold_response.get("payment_link")
+                
+                # Store BOLD payment record
+                bold_payment = BoldPayment(
+                    id=str(uuid.uuid4()),
+                    reference_code=session_id,
+                    payment_link_id=payment_link_id,
+                    user_id=None,
+                    amount=request.amount,
+                    buyer_name=request.placa or "Guest",
+                    buyer_email=request.email or "guest@smartcharge.co",
+                    buyer_phone=request.phone,
+                    status="ACTIVE"
+                )
+                session.add(bold_payment)
+                
+            except HTTPException as e:
+                # Log error but don't fail - session is created even without payment link
+                print(f"BOLD payment link creation failed: {e.detail}")
+            except Exception as e:
+                print(f"BOLD payment link creation error: {e}")
         
         await session.commit()
         
@@ -248,7 +307,8 @@ async def start_charge_session(request: StartChargeRequest):
             amount=request.amount,
             status="pending_payment",
             created_at=datetime.now(timezone.utc).isoformat(),
-            payment_url=payment_url
+            payment_url=payment_url,
+            payment_link_id=payment_link_id
         )
 
 
@@ -264,6 +324,44 @@ async def get_session_status(session_id: str):
         if not tx:
             raise HTTPException(status_code=404, detail="Session not found")
         
+        # If payment is still pending, check BOLD API for updates
+        if tx.payment_status == "PENDING":
+            bold_settings = await get_bold_settings()
+            if bold_settings and bold_settings.get("api_key"):
+                # Get BOLD payment record
+                bold_result = await session.execute(
+                    select(BoldPayment).where(BoldPayment.reference_code == session_id)
+                )
+                bold_payment = bold_result.scalar_one_or_none()
+                
+                if bold_payment and bold_payment.payment_link_id:
+                    try:
+                        bold_status = await get_bold_payment_status(
+                            bold_settings["api_key"],
+                            bold_payment.payment_link_id
+                        )
+                        
+                        # Map BOLD status to our status
+                        status_mapping = {
+                            "PAID": "PAID",
+                            "REJECTED": "DECLINED",
+                            "CANCELLED": "CANCELLED",
+                            "EXPIRED": "EXPIRED",
+                            "ACTIVE": "PENDING",
+                            "PROCESSING": "PENDING"
+                        }
+                        
+                        bold_status_value = bold_status.get("status", "ACTIVE")
+                        new_status = status_mapping.get(bold_status_value, "PENDING")
+                        
+                        if new_status != tx.payment_status:
+                            tx.payment_status = new_status
+                            bold_payment.status = bold_status_value
+                            bold_payment.bold_response = bold_status
+                            await session.commit()
+                    except Exception as e:
+                        print(f"Error checking BOLD status: {e}")
+        
         return {
             "session_id": tx.tx_id,
             "charger_id": tx.station,
@@ -278,7 +376,7 @@ async def get_session_status(session_id: str):
 
 @router.post("/session/{session_id}/confirm-payment")
 async def confirm_payment(session_id: str):
-    """Confirm payment for a session (called after PayU callback)"""
+    """Confirm payment for a session (manual confirmation)"""
     async with async_session() as session:
         result = await session.execute(
             select(Transaction).where(Transaction.tx_id == session_id)
@@ -298,102 +396,120 @@ async def confirm_payment(session_id: str):
         }
 
 
-@router.post("/payu-webhook")
-async def payu_webhook(request: Request):
-    """Handle PayU Colombia webhook callbacks"""
+@router.post("/bold-webhook")
+async def bold_webhook(request: Request):
+    """
+    Handle BOLD.CO webhook callbacks
+    
+    BOLD sends webhook notifications for payment status changes.
+    Configure webhook URL in BOLD merchant dashboard.
+    """
     try:
-        # Try to get form data (PayU sends as form)
-        try:
-            form_data = await request.form()
-            body = dict(form_data)
-        except:
-            # Fall back to JSON
-            body = await request.json()
+        body = await request.json()
         
-        # Extract relevant fields
-        reference_code = body.get("reference_sale") or body.get("referenceCode")
-        state_pol = body.get("state_pol") or body.get("transactionState")
-        transaction_id = body.get("transaction_id") or body.get("transactionId")
+        # Extract relevant fields from BOLD webhook
+        reference = body.get("reference") or body.get("id")
+        status = body.get("status")
+        transaction_id = body.get("transaction_id")
         
-        if not reference_code:
-            raise HTTPException(status_code=400, detail="Missing reference_code")
+        if not reference:
+            raise HTTPException(status_code=400, detail="Missing reference")
         
         async with async_session() as session:
             # Log the webhook
-            webhook_log = PayUWebhookLog(
+            webhook_log = BoldWebhookLog(
                 id=str(uuid.uuid4()),
-                reference_code=reference_code,
+                reference_code=reference,
                 webhook_data=body
             )
             session.add(webhook_log)
             
             # Update transaction status
             result = await session.execute(
-                select(Transaction).where(Transaction.tx_id == reference_code)
+                select(Transaction).where(Transaction.tx_id == reference)
             )
             tx = result.scalar_one_or_none()
             
             if tx:
-                # Map PayU state to our status
-                # 4 = APPROVED, 5 = EXPIRED, 6 = DECLINED, 7 = PENDING
-                state_mapping = {
-                    "4": "PAID",
-                    "5": "EXPIRED",
-                    "6": "DECLINED",
-                    "7": "PENDING"
+                # Map BOLD status to our status
+                status_mapping = {
+                    "PAID": "PAID",
+                    "REJECTED": "DECLINED",
+                    "CANCELLED": "CANCELLED",
+                    "EXPIRED": "EXPIRED",
+                    "ACTIVE": "PENDING",
+                    "PROCESSING": "PENDING"
                 }
-                new_status = state_mapping.get(str(state_pol), tx.payment_status)
+                new_status = status_mapping.get(status, tx.payment_status)
                 tx.payment_status = new_status
             
-            # Update PayU payment record
-            payu_result = await session.execute(
-                select(PayUPayment).where(PayUPayment.reference_code == reference_code)
+            # Update BOLD payment record
+            bold_result = await session.execute(
+                select(BoldPayment).where(BoldPayment.reference_code == reference)
             )
-            payu_payment = payu_result.scalar_one_or_none()
+            bold_payment = bold_result.scalar_one_or_none()
             
-            if payu_payment:
-                payu_payment.status = new_status if tx else "UNKNOWN"
-                payu_payment.payu_transaction_id = transaction_id
-                payu_payment.payu_response = body
+            if bold_payment:
+                bold_payment.status = status or bold_payment.status
+                bold_payment.bold_transaction_id = transaction_id
+                bold_payment.bold_response = body
             
             await session.commit()
         
         return {"status": "received"}
     
     except Exception as e:
-        print(f"PayU webhook error: {e}")
-        # Always return 200 to PayU to prevent retries
+        print(f"BOLD webhook error: {e}")
         return {"status": "error", "message": str(e)}
 
 
-@router.get("/payu-webhook")
-async def payu_webhook_get(request: Request):
-    """Handle PayU GET callback (response URL)"""
-    # PayU may redirect with GET parameters
+@router.get("/bold-callback")
+async def bold_callback(request: Request):
+    """Handle BOLD.CO callback redirect after payment"""
     params = dict(request.query_params)
     
-    reference_code = params.get("referenceCode")
-    transaction_state = params.get("transactionState") or params.get("lapTransactionState")
+    session_id = params.get("session_id")
     
-    if reference_code and transaction_state:
+    if session_id:
+        # Check payment status
         async with async_session() as session:
             result = await session.execute(
-                select(Transaction).where(Transaction.tx_id == reference_code)
+                select(Transaction).where(Transaction.tx_id == session_id)
             )
             tx = result.scalar_one_or_none()
             
             if tx:
-                # 4 = APPROVED
-                if transaction_state == "4":
-                    tx.payment_status = "PAID"
-                elif transaction_state == "6":
-                    tx.payment_status = "DECLINED"
-                elif transaction_state == "5":
-                    tx.payment_status = "EXPIRED"
-                
-                await session.commit()
+                # Get BOLD settings and check payment status
+                bold_settings = await get_bold_settings()
+                if bold_settings and bold_settings.get("api_key"):
+                    bold_result = await session.execute(
+                        select(BoldPayment).where(BoldPayment.reference_code == session_id)
+                    )
+                    bold_payment = bold_result.scalar_one_or_none()
+                    
+                    if bold_payment and bold_payment.payment_link_id:
+                        try:
+                            bold_status = await get_bold_payment_status(
+                                bold_settings["api_key"],
+                                bold_payment.payment_link_id
+                            )
+                            
+                            status_mapping = {
+                                "PAID": "PAID",
+                                "REJECTED": "DECLINED",
+                                "CANCELLED": "CANCELLED",
+                                "EXPIRED": "EXPIRED"
+                            }
+                            
+                            bold_status_value = bold_status.get("status", "ACTIVE")
+                            if bold_status_value in status_mapping:
+                                tx.payment_status = status_mapping[bold_status_value]
+                                bold_payment.status = bold_status_value
+                                bold_payment.bold_response = bold_status
+                                await session.commit()
+                        except Exception as e:
+                            print(f"Error checking BOLD status on callback: {e}")
     
     # Redirect to payment result page
-    redirect_url = f"{FRONTEND_URL}/payment/result?referenceCode={reference_code}&transactionState={transaction_state}"
-    from fastapi.responses import RedirectResponse
+    redirect_url = f"{FRONTEND_URL}/payment/result?session_id={session_id}"
     return RedirectResponse(url=redirect_url)
