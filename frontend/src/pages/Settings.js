@@ -482,8 +482,8 @@ function Settings() {
 
                   {/* Connector QR Codes */}
                   <div className="p-4">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">QR Code URLs per Connector:</p>
-                    <div className="grid gap-3">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-4">QR Codes & URLs per Connector:</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {CONNECTORS.map((connector) => {
                         const url = getQRCodeUrl(charger.charger_id, connector);
                         const copyKey = `${charger.id}-${connector}`;
@@ -491,31 +491,53 @@ function Settings() {
                         return (
                           <div 
                             key={connector}
-                            className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg"
+                            className="p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700"
                           >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                              connector === 'CCS2' ? 'bg-blue-100 dark:bg-blue-900/30' :
-                              connector === 'CHADEMO' ? 'bg-purple-100 dark:bg-purple-900/30' :
-                              'bg-green-100 dark:bg-green-900/30'
-                            }`}>
-                              <span className={`text-xs font-bold ${
-                                connector === 'CCS2' ? 'text-blue-700 dark:text-blue-400' :
-                                connector === 'CHADEMO' ? 'text-purple-700 dark:text-purple-400' :
-                                'text-green-700 dark:text-green-400'
+                            {/* Connector Label */}
+                            <div className="flex items-center justify-between mb-3">
+                              <div className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                connector === 'CCS2' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                connector === 'CHADEMO' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                                'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                               }`}>
-                                {connector === 'CCS2' ? 'CCS' : connector === 'CHADEMO' ? 'CHD' : 'J17'}
-                              </span>
+                                {connector}
+                              </div>
                             </div>
                             
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{connector}</p>
-                              <p className="text-xs text-slate-500 truncate font-mono">{url}</p>
+                            {/* QR Code */}
+                            <div className="bg-white p-3 rounded-lg mb-3 flex justify-center">
+                              <QRCodeSVG
+                                id={`qr-${charger.charger_id}-${connector}`}
+                                value={url}
+                                size={150}
+                                level="M"
+                                includeMargin={true}
+                              />
                             </div>
                             
-                            <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* URL Display */}
+                            <div className="mb-3">
+                              <p className="text-xs text-slate-500 mb-1">URL for EV Charger UI:</p>
+                              <div className="bg-white dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700">
+                                <p className="text-xs font-mono text-slate-600 dark:text-slate-400 break-all select-all">{url}</p>
+                              </div>
+                            </div>
+                            
+                            {/* Action Buttons */}
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => downloadQRCode(charger.charger_id, connector)}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                title="Download QR Code"
+                                data-testid={`download-${charger.charger_id}-${connector}`}
+                              >
+                                <Download className="w-4 h-4" />
+                                Download
+                              </button>
+                              
                               <button
                                 onClick={() => copyToClipboard(url, copyKey)}
-                                className={`p-2 rounded-lg transition-colors ${
+                                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                                   copiedUrl === copyKey
                                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                     : 'bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300'
@@ -530,7 +552,7 @@ function Settings() {
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-400 rounded-lg transition-colors"
+                                className="px-3 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 rounded-lg transition-colors"
                                 title="Open in new tab"
                                 data-testid={`open-${charger.charger_id}-${connector}`}
                               >
@@ -547,16 +569,32 @@ function Settings() {
             </div>
           )}
 
-          {/* QR Code Generation Info */}
+          {/* QR Code Usage Info */}
           <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6">
-            <h3 className="font-medium mb-4">How to Generate QR Codes</h3>
-            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
-              <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
-                <li>Copy the URL for the specific connector type</li>
-                <li>Use any QR code generator (e.g., <a href="https://www.qrcode-generator.de/" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">qrcode-generator.de</a>)</li>
-                <li>Paste the URL and generate the QR code</li>
-                <li>Download and display on your charger's screen for that connector</li>
-              </ol>
+            <h3 className="font-medium mb-4">How to Use QR Codes</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                  <Download className="w-4 h-4 text-orange-600" />
+                  For Physical Display
+                </h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                  <li>Click "Download" to get the QR code PNG</li>
+                  <li>Print and display on your charger for that connector</li>
+                  <li>Users scan with phone to start charging</li>
+                </ol>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
+                  <ExternalLink className="w-4 h-4 text-blue-600" />
+                  For Digital Display (EV Charger UI)
+                </h4>
+                <ol className="list-decimal list-inside space-y-1 text-sm text-slate-600 dark:text-slate-400">
+                  <li>Copy the URL shown below each QR code</li>
+                  <li>Configure your charger's UI to display this URL</li>
+                  <li>Users can tap/click to open payment page</li>
+                </ol>
+              </div>
             </div>
           </div>
         </div>
