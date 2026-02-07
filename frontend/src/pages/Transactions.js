@@ -657,8 +657,7 @@ function Transactions() {
                   )}
                   <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Tx ID</th>
                   <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Account</th>
-                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Connector</th>
-                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Type</th>
+                  <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Connector Type</th>
                   <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Start Date</th>
                   <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Start Time</th>
                   <th className="text-left py-3 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300">Duration</th>
