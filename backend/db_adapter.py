@@ -123,7 +123,8 @@ class PostgresCollection:
                 query = query.limit(limit)
             
             result = await session.execute(query)
-            return [model_to_dict(row) for row in result.scalars().all()]
+            # Filter out None values
+            return [model_to_dict(row) for row in result.scalars().all() if row is not None]
     
     async def insert_one(self, data: dict):
         """Insert single record"""
