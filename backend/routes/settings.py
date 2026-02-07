@@ -1,5 +1,5 @@
 """
-Settings routes - BOLD.CO, SendGrid, Invoice webhook configuration
+Settings routes - BOLD.CO, SendGrid, Twilio WhatsApp, Invoice webhook configuration
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -18,6 +18,13 @@ router = APIRouter(prefix="/settings", tags=["Settings"])
 class BoldSettings(BaseModel):
     api_key: Optional[str] = None
     test_mode: bool = True
+
+
+class TwilioSettings(BaseModel):
+    account_sid: Optional[str] = None
+    auth_token: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    enabled: bool = False
 
 
 class PayUSettings(BaseModel):
