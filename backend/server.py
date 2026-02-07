@@ -121,6 +121,7 @@ from routes.dashboard import router as dashboard_router
 from routes.settings import router as settings_router
 from routes.ocpp import router as ocpp_router
 from routes.export import router as export_router
+from routes.email import router as email_router
 
 # Register all routers under /api prefix
 app.include_router(auth_router, prefix="/api")
@@ -133,6 +134,7 @@ app.include_router(dashboard_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(ocpp_router, prefix="/api")
 app.include_router(export_router, prefix="/api")
+app.include_router(email_router, prefix="/api")
 
 
 # Health check endpoint
