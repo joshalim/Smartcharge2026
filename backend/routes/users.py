@@ -23,19 +23,23 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: str = "user"
+    phone: Optional[str] = None
     rfid_card_number: Optional[str] = None
     rfid_balance: Optional[float] = 0.0
     placa: Optional[str] = None
+    whatsapp_enabled: Optional[bool] = True
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    phone: Optional[str] = None
     rfid_card_number: Optional[str] = None
     rfid_balance: Optional[float] = None
     rfid_status: Optional[str] = None
     placa: Optional[str] = None
+    whatsapp_enabled: Optional[bool] = None
 
 
 class UserImportResult(BaseModel):
