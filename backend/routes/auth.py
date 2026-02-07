@@ -182,3 +182,30 @@ async def register(user_data: UserRegister):
 async def get_me(current_user: UserResponse = Depends(get_current_user)):
     """Get current user info"""
     return current_user
+
+
+@router.post("/change-password")
+async def change_password(
+    request: PasswordChangeRequest,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """Change password for the current user"""
+    if len(request.new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.id == current_user.id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not verify_password(request.current_password, user.password_hash):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        user.password_hash = hash_password(request.new_password)
+        await session.commit()
+        
+        return {"message": "Password changed successfully"}
