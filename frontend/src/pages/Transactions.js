@@ -781,16 +781,13 @@ function Transactions() {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Connector Type</label>
-                <select
-                  value={editForm.connector_type}
-                  onChange={(e) => setEditForm({...editForm, connector_type: e.target.value})}
-                  className="w-full px-3 py-2 border rounded-md"
-                >
-                  <option value="">None</option>
-                  <option value="CCS2">CCS2</option>
-                  <option value="CHADEMO">CHADEMO</option>
-                  <option value="J1772">J1772</option>
-                </select>
+                <input
+                  type="text"
+                  value={editForm.connector || ''}
+                  onChange={(e) => setEditForm({...editForm, connector: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                  placeholder="e.g., Type2, CCS, etc."
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-2">Energy (kWh)</label>
