@@ -54,6 +54,7 @@ function Import() {
       const response = await axios.post(`${API}/transactions/import`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
         },
       });
 
