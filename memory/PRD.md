@@ -259,18 +259,20 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 6. Completes payment → Returns to result page
 7. Transaction is recorded and charge session starts
 
-**PayU Integration:**
-- Uses PayU Colombia webcheckout flow
-- Requires PayU credentials in Settings > PayU Colombia
-- Supports sandbox (test) and production modes
-- Webhook callback for payment confirmation
+**BOLD.CO Integration:**
+- Uses BOLD.CO Colombia payment link API
+- Requires only API Key (Llave de Identidad) in Settings > BOLD.CO
+- Supports Credit Cards, PSE, Botón Bancolombia, Nequi
+- Payment links expire in 24 hours
+- Webhook for payment status updates
 
 **Backend Endpoints:**
 - `GET /api/public/charger/{charger_id}` - Get charger info (no auth)
 - `GET /api/public/pricing` - Get connector pricing (no auth)
 - `POST /api/public/start-charge` - Create charging session (no auth)
 - `GET /api/public/session/{session_id}` - Get session status (no auth)
-- `POST /api/public/payu-webhook` - PayU callback (no auth)
+- `POST /api/public/bold-webhook` - BOLD.CO callback (no auth)
+- `GET /api/public/bold-callback` - BOLD.CO redirect callback (no auth)
 
 ## Potential Enhancements
 1. **Email template persistence** - Save custom templates to database
