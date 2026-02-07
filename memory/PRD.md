@@ -186,8 +186,9 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 30. ✅ **FEATURE**: Transaction CRUD - Manual add, edit, delete individual transactions (Feb 7, 2026)
 31. ✅ **REFACTOR**: RFID combined into Users - Each user now has integrated RFID card fields (Feb 7, 2026)
 32. ✅ **FEATURE**: Excel import rebuilt - Client-side parsing with SheetJS, sends JSON to backend (Feb 7, 2026)
-33. ✅ **FEATURE**: QR Code Charging - Public page for users to scan QR, select connector, choose amount, and pay via PayU (Feb 7, 2026)
+33. ✅ **FEATURE**: QR Code Charging - Public page for users to scan QR, select connector, choose amount, and pay via BOLD.CO (Feb 7, 2026)
 34. ✅ **FEATURE**: QR Code Generator - Settings page shows QR codes with download buttons + copyable URLs for each charger's connectors (CCS2, CHADEMO, J1772) (Feb 7, 2026)
+35. ✅ **INTEGRATION**: Replaced PayU with BOLD.CO payment gateway - Supports Credit Cards, PSE, Bancolombia, Nequi (Feb 7, 2026)
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
