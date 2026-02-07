@@ -507,3 +507,90 @@ async def import_transactions(
         skipped_count=skipped,
         errors=errors
     )
+
+
+@router.post("/import-json", response_model=ImportResult)
+async def import_transactions_json(
+    request: TransactionImportRequest,
+    current_user: UserResponse = Depends(require_role("admin", "user"))
+):
+    """
+    Import transactions from JSON (parsed Excel data from frontend).
+    Required fields: TxID, Station, Connector, Account, Start Time, End Time, Meter value(kW.h)
+    Duplicates (same TxID) are skipped.
+    """
+    errors = []
+    imported = 0
+    skipped = 0
+    
+    for idx, row in enumerate(request.transactions):
+        row_num = idx + 2  # Excel row number
+        
+        # Get TxID
+        tx_id = str(row.get('TxID', '')).strip()
+        if not tx_id:
+            errors.append(ImportValidationError(row=row_num, field="TxID", message="TxID is required"))
+            continue
+        
+        # Get meter value
+        meter_raw = row.get('Meter value(kW.h)', 0)
+        try:
+            if isinstance(meter_raw, str):
+                meter_value = float(meter_raw.replace(',', '.').strip()) if meter_raw.strip() else 0.0
+            else:
+                meter_value = float(meter_raw) if meter_raw else 0.0
+        except (ValueError, TypeError):
+            errors.append(ImportValidationError(row=row_num, field="Meter value", message=f"Invalid number: {meter_raw}"))
+            continue
+        
+        # Skip zero meter value
+        if meter_value == 0:
+            skipped += 1
+            continue
+        
+        # Check for duplicate
+        async with async_session() as session:
+            result = await session.execute(
+                select(Transaction).where(Transaction.tx_id == tx_id)
+            )
+            if result.scalar_one_or_none():
+                skipped += 1
+                continue
+            
+            # Extract fields
+            station = str(row.get('Station', '')).strip()
+            connector = str(row.get('Connector', '')).strip()
+            account = str(row.get('Account', '')).strip()
+            start_time = str(row.get('Start Time', '')).strip()
+            end_time = str(row.get('End Time', '')).strip()
+            
+            # Calculate pricing and duration
+            price_per_kwh = await get_pricing(account, connector, None)
+            cost = round(meter_value * price_per_kwh, 2)
+            duration = calculate_charging_duration(start_time, end_time)
+            
+            # Create transaction
+            new_tx = Transaction(
+                id=str(uuid.uuid4()),
+                tx_id=tx_id,
+                station=station,
+                connector=connector,
+                account=account,
+                start_time=start_time,
+                end_time=end_time,
+                meter_value=meter_value,
+                charging_duration=duration,
+                cost=cost,
+                payment_status="UNPAID"
+            )
+            
+            session.add(new_tx)
+            await session.commit()
+            imported += 1
+    
+    return ImportResult(
+        success=len(errors) == 0,
+        imported_count=imported,
+        skipped_count=skipped,
+        errors=errors
+    )
