@@ -185,6 +185,9 @@ class PostgresCollection:
             # Handle $set operator for compatibility
             if '$set' in data:
                 update_data = data['$set']
+            # Handle $unset operator
+            elif '$unset' in data:
+                update_data = {k: None for k in data['$unset'].keys()}
             else:
                 update_data = data
             
@@ -217,7 +220,7 @@ class PostgresCollection:
             query = query.values(**prepared)
             result = await session.execute(query)
             await session.commit()
-            return {'modified_count': result.rowcount}
+            return UpdateResult(result.rowcount, result.rowcount)
     
     async def update_many(self, filters: dict, data: dict):
         """Update multiple records"""
