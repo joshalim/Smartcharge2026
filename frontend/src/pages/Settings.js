@@ -6,12 +6,21 @@ import { useAuth } from '../contexts/AuthContext';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function Settings() {
-  const [activeTab, setActiveTab] = useState('payu');
+  const { user, token } = useAuth();
+  const [activeTab, setActiveTab] = useState('account');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [showApiKey, setShowApiKey] = useState({});
   const [message, setMessage] = useState(null);
+  
+  // Password Change
+  const [passwordData, setPasswordData] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
+  const [showPassword, setShowPassword] = useState({});
   
   // PayU Settings
   const [payuSettings, setPayuSettings] = useState({
