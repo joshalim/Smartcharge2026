@@ -8,6 +8,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function Import() {
   const { t } = useTranslation();
+  const { token } = useAuth();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
