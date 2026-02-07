@@ -95,6 +95,7 @@ async def get_user(
             rfid_card_number=user.rfid_card_number,
             rfid_balance=user.rfid_balance or 0.0,
             rfid_status=user.rfid_status or "active",
+            placa=user.placa,
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
