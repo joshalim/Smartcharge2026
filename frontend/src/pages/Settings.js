@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle, User, Key, QrCode, Copy, ExternalLink, Zap } from 'lucide-react';
+import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle, User, Key, QrCode, Copy, ExternalLink, Zap, Download } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { QRCodeSVG } from 'qrcode.react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const FRONTEND_URL = process.env.REACT_APP_BACKEND_URL?.replace('/api', '') || window.location.origin;
