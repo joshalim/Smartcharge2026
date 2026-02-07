@@ -1,11 +1,13 @@
 """
-Reports routes - Generate reports and analytics
+Reports routes - Generate reports and analytics with PDF export
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import select, func, and_
+import io
 
 from database import async_session, Transaction
 from routes.auth import UserResponse, get_current_user
@@ -17,6 +19,7 @@ class ReportFilters(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     account: Optional[str] = None
+    station: Optional[str] = None
     connector_type: Optional[str] = None
     payment_type: Optional[str] = None
     payment_status: Optional[str] = None
@@ -39,52 +42,42 @@ class TransactionData(BaseModel):
     payment_date: Optional[str] = None
 
 
-class StationSummary(BaseModel):
-    station: str
-    total_sessions: int
-    total_energy: float
-    total_revenue: float
-
-
-class AccountSummary(BaseModel):
-    account: str
-    total_sessions: int
-    total_energy: float
-    total_revenue: float
-
-
-class PaymentSummary(BaseModel):
-    status: str
-    count: int
-    total: float
-
-
-class ReportData(BaseModel):
+class SummaryData(BaseModel):
     total_transactions: int
-    total_revenue: float
     total_energy: float
-    paid_count: int
-    unpaid_count: int
+    total_revenue: float
+    paid_transactions: int
+    paid_revenue: float
+    unpaid_revenue: float
+    avg_session_energy: float
+    avg_session_revenue: float
+
+
+class GroupedData(BaseModel):
+    name: str
+    transactions: int
+    energy: float
+    revenue: float
+
+
+class DailyData(BaseModel):
+    date: str
+    transactions: int
+    energy: float
+    revenue: float
+
+
+class ReportResponse(BaseModel):
+    summary: SummaryData
+    by_account: List[GroupedData]
+    by_station: List[GroupedData]
+    by_connector: List[GroupedData]
+    by_payment_type: List[GroupedData]
+    daily_trend: List[DailyData]
     transactions: List[TransactionData]
-    by_station: List[StationSummary]
-    by_account: List[AccountSummary]
-    by_payment_status: List[PaymentSummary]
 
 
-def parse_date(date_str: str, end_of_day: bool = False):
-    """Parse date string and return datetime object"""
-    if not date_str:
-        return None
-    try:
-        dt = datetime.strptime(date_str, "%Y-%m-%d")
-        if end_of_day:
-            dt = dt.replace(hour=23, minute=59, second=59)
-        return dt
-    except:
-        return None
-
-
-@router.post("/generate", response_model=ReportData)
+@router.post("/generate", response_model=ReportResponse)
 async def generate_report(
     filters: ReportFilters,
     current_user: UserResponse = Depends(get_current_user)
@@ -96,7 +89,7 @@ async def generate_report(
             query = select(Transaction)
             conditions = []
             
-            # Date filters - check against start_time field
+            # Date filters
             if filters.start_date:
                 conditions.append(Transaction.start_time >= filters.start_date)
             
@@ -105,6 +98,9 @@ async def generate_report(
             
             if filters.account:
                 conditions.append(Transaction.account.ilike(f"%{filters.account}%"))
+            
+            if filters.station:
+                conditions.append(Transaction.station.ilike(f"%{filters.station}%"))
             
             if filters.connector_type:
                 conditions.append(
@@ -121,66 +117,122 @@ async def generate_report(
             if conditions:
                 query = query.where(and_(*conditions))
             
-            # Limit to 1000 transactions max for performance
-            query = query.order_by(Transaction.start_time.desc()).limit(1000)
+            # Limit for performance
+            query = query.order_by(Transaction.start_time.desc()).limit(2000)
+            
+            result = await session.execute(query)
+            transactions = result.scalars().all()
         
-        result = await session.execute(query)
-        transactions = result.scalars().all()
+        if not transactions:
+            return ReportResponse(
+                summary=SummaryData(
+                    total_transactions=0, total_energy=0, total_revenue=0,
+                    paid_transactions=0, paid_revenue=0, unpaid_revenue=0,
+                    avg_session_energy=0, avg_session_revenue=0
+                ),
+                by_account=[], by_station=[], by_connector=[],
+                by_payment_type=[], daily_trend=[], transactions=[]
+            )
         
-        # Calculate totals
+        # Calculate summary
         total_revenue = sum(tx.cost or 0 for tx in transactions)
         total_energy = sum(tx.meter_value or 0 for tx in transactions)
-        paid_count = sum(1 for tx in transactions if tx.payment_status == "PAID")
-        unpaid_count = sum(1 for tx in transactions if tx.payment_status == "UNPAID")
+        paid_txs = [tx for tx in transactions if tx.payment_status == "PAID"]
+        paid_revenue = sum(tx.cost or 0 for tx in paid_txs)
+        unpaid_revenue = total_revenue - paid_revenue
         
-        # Group by station
-        station_data = {}
-        for tx in transactions:
-            station = tx.station or "Unknown"
-            if station not in station_data:
-                station_data[station] = {"total_sessions": 0, "total_energy": 0, "total_revenue": 0}
-            station_data[station]["total_sessions"] += 1
-            station_data[station]["total_energy"] += tx.meter_value or 0
-            station_data[station]["total_revenue"] += tx.cost or 0
-        
-        by_station = [
-            StationSummary(station=k, **v) 
-            for k, v in sorted(station_data.items(), key=lambda x: x[1]["total_revenue"], reverse=True)
-        ]
+        summary = SummaryData(
+            total_transactions=len(transactions),
+            total_energy=round(total_energy, 2),
+            total_revenue=round(total_revenue, 2),
+            paid_transactions=len(paid_txs),
+            paid_revenue=round(paid_revenue, 2),
+            unpaid_revenue=round(unpaid_revenue, 2),
+            avg_session_energy=round(total_energy / len(transactions), 2) if transactions else 0,
+            avg_session_revenue=round(total_revenue / len(transactions), 2) if transactions else 0
+        )
         
         # Group by account
         account_data = {}
         for tx in transactions:
-            account = tx.account or "Unknown"
-            if account not in account_data:
-                account_data[account] = {"total_sessions": 0, "total_energy": 0, "total_revenue": 0}
-            account_data[account]["total_sessions"] += 1
-            account_data[account]["total_energy"] += tx.meter_value or 0
-            account_data[account]["total_revenue"] += tx.cost or 0
+            key = tx.account or "Unknown"
+            if key not in account_data:
+                account_data[key] = {"transactions": 0, "energy": 0, "revenue": 0}
+            account_data[key]["transactions"] += 1
+            account_data[key]["energy"] += tx.meter_value or 0
+            account_data[key]["revenue"] += tx.cost or 0
         
-        by_account = [
-            AccountSummary(account=k, **v) 
-            for k, v in sorted(account_data.items(), key=lambda x: x[1]["total_revenue"], reverse=True)
-        ]
+        by_account = sorted([
+            GroupedData(name=k, **{kk: round(vv, 2) if isinstance(vv, float) else vv for kk, vv in v.items()})
+            for k, v in account_data.items()
+        ], key=lambda x: x.revenue, reverse=True)[:15]
         
-        # Group by payment status
-        payment_status_data = {"PAID": {"count": 0, "total": 0}, "UNPAID": {"count": 0, "total": 0}}
+        # Group by station
+        station_data = {}
         for tx in transactions:
-            status = tx.payment_status or "UNPAID"
-            if status not in payment_status_data:
-                payment_status_data[status] = {"count": 0, "total": 0}
-            payment_status_data[status]["count"] += 1
-            payment_status_data[status]["total"] += tx.cost or 0
+            key = tx.station or "Unknown"
+            if key not in station_data:
+                station_data[key] = {"transactions": 0, "energy": 0, "revenue": 0}
+            station_data[key]["transactions"] += 1
+            station_data[key]["energy"] += tx.meter_value or 0
+            station_data[key]["revenue"] += tx.cost or 0
         
-        by_payment_status = [
-            PaymentSummary(status=k, **v) for k, v in payment_status_data.items()
-        ]
+        by_station = sorted([
+            GroupedData(name=k, **{kk: round(vv, 2) if isinstance(vv, float) else vv for kk, vv in v.items()})
+            for k, v in station_data.items()
+        ], key=lambda x: x.revenue, reverse=True)[:15]
         
-        # Convert transactions to response model (limit to 500 for frontend performance)
+        # Group by connector type
+        connector_data = {}
+        for tx in transactions:
+            key = tx.connector_type or tx.connector or "Unknown"
+            if key not in connector_data:
+                connector_data[key] = {"transactions": 0, "energy": 0, "revenue": 0}
+            connector_data[key]["transactions"] += 1
+            connector_data[key]["energy"] += tx.meter_value or 0
+            connector_data[key]["revenue"] += tx.cost or 0
+        
+        by_connector = sorted([
+            GroupedData(name=k, **{kk: round(vv, 2) if isinstance(vv, float) else vv for kk, vv in v.items()})
+            for k, v in connector_data.items()
+        ], key=lambda x: x.revenue, reverse=True)
+        
+        # Group by payment type
+        payment_type_data = {}
+        for tx in transactions:
+            key = tx.payment_type or "Not Specified"
+            if key not in payment_type_data:
+                payment_type_data[key] = {"transactions": 0, "energy": 0, "revenue": 0}
+            payment_type_data[key]["transactions"] += 1
+            payment_type_data[key]["energy"] += tx.meter_value or 0
+            payment_type_data[key]["revenue"] += tx.cost or 0
+        
+        by_payment_type = sorted([
+            GroupedData(name=k, **{kk: round(vv, 2) if isinstance(vv, float) else vv for kk, vv in v.items()})
+            for k, v in payment_type_data.items()
+        ], key=lambda x: x.revenue, reverse=True)
+        
+        # Daily trend
+        daily_data = {}
+        for tx in transactions:
+            if tx.start_time:
+                date_key = tx.start_time[:10]  # YYYY-MM-DD
+                if date_key not in daily_data:
+                    daily_data[date_key] = {"transactions": 0, "energy": 0, "revenue": 0}
+                daily_data[date_key]["transactions"] += 1
+                daily_data[date_key]["energy"] += tx.meter_value or 0
+                daily_data[date_key]["revenue"] += tx.cost or 0
+        
+        daily_trend = sorted([
+            DailyData(date=k, **{kk: round(vv, 2) if isinstance(vv, float) else vv for kk, vv in v.items()})
+            for k, v in daily_data.items()
+        ], key=lambda x: x.date)[-30:]  # Last 30 days
+        
+        # Transaction list (limited)
         tx_list = [
             TransactionData(
                 id=tx.id,
-                tx_id=tx.tx_id,
+                tx_id=tx.tx_id or "",
                 station=tx.station or "",
                 connector=tx.connector,
                 connector_type=tx.connector_type,
@@ -188,41 +240,60 @@ async def generate_report(
                 start_time=tx.start_time or "",
                 end_time=tx.end_time or "",
                 charging_duration=tx.charging_duration,
-                meter_value=tx.meter_value or 0,
-                cost=tx.cost or 0,
+                meter_value=round(tx.meter_value or 0, 2),
+                cost=round(tx.cost or 0, 2),
                 payment_status=tx.payment_status or "UNPAID",
                 payment_type=tx.payment_type,
                 payment_date=tx.payment_date
             )
-            for tx in transactions[:500]  # Limit for frontend
+            for tx in transactions[:100]
         ]
         
-        return ReportData(
-            total_transactions=len(transactions),
-            total_revenue=total_revenue,
-            total_energy=total_energy,
-            paid_count=paid_count,
-            unpaid_count=unpaid_count,
-            transactions=tx_list,
-            by_station=by_station,
+        return ReportResponse(
+            summary=summary,
             by_account=by_account,
-            by_payment_status=by_payment_status
+            by_station=by_station,
+            by_connector=by_connector,
+            by_payment_type=by_payment_type,
+            daily_trend=daily_trend,
+            transactions=tx_list
         )
+        
     except Exception as e:
         import logging
         logging.error(f"Report generation error: {e}")
-        # Return empty report on error
-        return ReportData(
-            total_transactions=0,
-            total_revenue=0,
-            total_energy=0,
-            paid_count=0,
-            unpaid_count=0,
-            transactions=[],
-            by_station=[],
-            by_account=[],
-            by_payment_status=[
-                PaymentSummary(status="PAID", count=0, total=0),
-                PaymentSummary(status="UNPAID", count=0, total=0)
-            ]
-        )
+        raise
+
+
+@router.get("/quick-stats")
+async def get_quick_stats(current_user: UserResponse = Depends(get_current_user)):
+    """Get quick stats for dashboard without filters"""
+    try:
+        async with async_session() as session:
+            # Get last 30 days of data
+            thirty_days_ago = datetime.now(timezone.utc).isoformat()[:10]
+            
+            result = await session.execute(
+                select(Transaction).order_by(Transaction.start_time.desc()).limit(500)
+            )
+            transactions = result.scalars().all()
+        
+        total_revenue = sum(tx.cost or 0 for tx in transactions)
+        total_energy = sum(tx.meter_value or 0 for tx in transactions)
+        paid_txs = [tx for tx in transactions if tx.payment_status == "PAID"]
+        
+        return {
+            "total_transactions": len(transactions),
+            "total_energy": round(total_energy, 2),
+            "total_revenue": round(total_revenue, 2),
+            "paid_count": len(paid_txs),
+            "collection_rate": round(len(paid_txs) / len(transactions) * 100, 1) if transactions else 0
+        }
+    except Exception as e:
+        return {
+            "total_transactions": 0,
+            "total_energy": 0,
+            "total_revenue": 0,
+            "paid_count": 0,
+            "collection_rate": 0
+        }
