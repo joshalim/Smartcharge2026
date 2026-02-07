@@ -331,6 +331,16 @@ function Transactions() {
           <p className="text-slate-500 dark:text-slate-400">{t('transactions.subtitle')}</p>
         </div>
         <div className="flex gap-2">
+          {(user?.role === 'admin' || user?.role === 'user') && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium"
+              data-testid="add-transaction-btn"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </button>
+          )}
           {(user?.role === 'admin' || user?.role === 'user') && selectedTxs.length > 0 && (
             <button
               onClick={() => setShowBulkActions(!showBulkActions)}
