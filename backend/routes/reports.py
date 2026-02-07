@@ -90,43 +90,39 @@ async def generate_report(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Generate a comprehensive report with filters"""
-    async with async_session() as session:
-        # Build query with filters
-        query = select(Transaction)
-        conditions = []
-        
-        # Date filters - check against start_time field
-        if filters.start_date:
-            start_dt = parse_date(filters.start_date)
-            if start_dt:
-                # Compare as string since start_time is stored as string
+    try:
+        async with async_session() as session:
+            # Build query with filters
+            query = select(Transaction)
+            conditions = []
+            
+            # Date filters - check against start_time field
+            if filters.start_date:
                 conditions.append(Transaction.start_time >= filters.start_date)
-        
-        if filters.end_date:
-            end_dt = parse_date(filters.end_date, end_of_day=True)
-            if end_dt:
-                # Add one day to include the end date
+            
+            if filters.end_date:
                 conditions.append(Transaction.start_time <= filters.end_date + "T23:59:59")
-        
-        if filters.account:
-            conditions.append(Transaction.account.ilike(f"%{filters.account}%"))
-        
-        if filters.connector_type:
-            conditions.append(
-                (Transaction.connector == filters.connector_type) |
-                (Transaction.connector_type == filters.connector_type)
-            )
-        
-        if filters.payment_type:
-            conditions.append(Transaction.payment_type == filters.payment_type)
-        
-        if filters.payment_status:
-            conditions.append(Transaction.payment_status == filters.payment_status)
-        
-        if conditions:
-            query = query.where(and_(*conditions))
-        
-        query = query.order_by(Transaction.start_time.desc())
+            
+            if filters.account:
+                conditions.append(Transaction.account.ilike(f"%{filters.account}%"))
+            
+            if filters.connector_type:
+                conditions.append(
+                    (Transaction.connector == filters.connector_type) |
+                    (Transaction.connector_type == filters.connector_type)
+                )
+            
+            if filters.payment_type:
+                conditions.append(Transaction.payment_type == filters.payment_type)
+            
+            if filters.payment_status:
+                conditions.append(Transaction.payment_status == filters.payment_status)
+            
+            if conditions:
+                query = query.where(and_(*conditions))
+            
+            # Limit to 1000 transactions max for performance
+            query = query.order_by(Transaction.start_time.desc()).limit(1000)
         
         result = await session.execute(query)
         transactions = result.scalars().all()
