@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle2, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -38,6 +39,60 @@ function Import() {
     }
   };
 
+  // Parse Excel file and extract data
+  const parseExcelFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+          resolve(jsonData);
+        } catch (error) {
+          reject(new Error('Failed to parse Excel file: ' + error.message));
+        }
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  // Normalize column names to match expected format
+  const normalizeColumnName = (name) => {
+    const normalized = String(name).toLowerCase().trim();
+    const mapping = {
+      'txid': 'TxID',
+      'tx_id': 'TxID',
+      'transaction_id': 'TxID',
+      'station': 'Station',
+      'charger': 'Station',
+      'connector': 'Connector',
+      'account': 'Account',
+      'user': 'Account',
+      'rfid': 'Account',
+      'start time': 'Start Time',
+      'starttime': 'Start Time',
+      'start_time': 'Start Time',
+      'end time': 'End Time',
+      'endtime': 'End Time',
+      'end_time': 'End Time',
+      'meter value(kw.h)': 'Meter value(kW.h)',
+      'meter value (kw.h)': 'Meter value(kW.h)',
+      'metervalue(kw.h)': 'Meter value(kW.h)',
+      'meter value': 'Meter value(kW.h)',
+      'metervalue': 'Meter value(kW.h)',
+      'energy': 'Meter value(kW.h)',
+      'energy (kwh)': 'Meter value(kW.h)',
+      'kwh': 'Meter value(kW.h)',
+    };
+    return mapping[normalized] || name;
+  };
+
   const handleUpload = async () => {
     if (!file) return;
 
@@ -45,23 +100,45 @@ function Import() {
     setResult(null);
 
     try {
-      // Get token from localStorage
       const token = localStorage.getItem('token');
-      
       if (!token) {
         throw new Error('Not authenticated. Please log in again.');
       }
 
-      const formData = new FormData();
-      formData.append('file', file);
+      // Parse Excel file in browser
+      const rawData = await parseExcelFile(file);
+      
+      if (!rawData || rawData.length === 0) {
+        throw new Error('Excel file is empty or could not be parsed');
+      }
 
-      // Use native fetch for more reliable file upload
-      const response = await fetch(`${API}/transactions/import`, {
+      // Normalize column names
+      const transactions = rawData.map(row => {
+        const normalized = {};
+        Object.keys(row).forEach(key => {
+          const newKey = normalizeColumnName(key);
+          normalized[newKey] = row[key];
+        });
+        return normalized;
+      });
+
+      // Validate required columns exist
+      const requiredCols = ['TxID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter value(kW.h)'];
+      const firstRow = transactions[0];
+      const missingCols = requiredCols.filter(col => !(col in firstRow));
+      
+      if (missingCols.length > 0) {
+        throw new Error(`Missing required columns: ${missingCols.join(', ')}`);
+      }
+
+      // Send as JSON to backend
+      const response = await fetch(`${API}/transactions/import-json`, {
         method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: formData
+        body: JSON.stringify({ transactions })
       });
 
       const data = await response.json();
@@ -77,12 +154,11 @@ function Import() {
       }
     } catch (error) {
       console.error('Import error:', error);
-      
       setResult({
         success: false,
         imported_count: 0,
         skipped_count: 0,
-        errors: [{ row: 0, field: 'File', message: error.message || 'Failed to upload file' }],
+        errors: [{ row: 0, field: 'File', message: error.message || 'Failed to process file' }],
       });
     } finally {
       setUploading(false);
