@@ -117,6 +117,57 @@ def calculate_charging_duration(start_time: str, end_time: str) -> str:
         return "N/A"
 
 
+async def deduct_rfid_balance(account: str, cost: float) -> dict:
+    """
+    Deduct cost from user's RFID balance based on account.
+    Account can be user's name, email, or RFID card number.
+    Returns dict with deduction status.
+    """
+    if cost <= 0:
+        return {"deducted": False, "reason": "No cost to deduct"}
+    
+    async with async_session() as session:
+        # Try to find user by RFID card number, name, or email
+        result = await session.execute(
+            select(User).where(
+                (User.rfid_card_number == account) |
+                (User.name == account) |
+                (User.email == account)
+            )
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return {"deducted": False, "reason": "User not found"}
+        
+        if not user.rfid_card_number:
+            return {"deducted": False, "reason": "User has no RFID card"}
+        
+        if user.rfid_status != "active":
+            return {"deducted": False, "reason": f"RFID card is {user.rfid_status}"}
+        
+        current_balance = user.rfid_balance or 0
+        if current_balance < cost:
+            return {
+                "deducted": False, 
+                "reason": f"Insufficient balance: {current_balance} < {cost}",
+                "user_id": user.id,
+                "balance": current_balance
+            }
+        
+        # Deduct balance
+        user.rfid_balance = current_balance - cost
+        await session.commit()
+        
+        return {
+            "deducted": True,
+            "user_id": user.id,
+            "previous_balance": current_balance,
+            "new_balance": user.rfid_balance,
+            "amount_deducted": cost
+        }
+
+
 async def get_pricing(account: str, connector: str, connector_type: Optional[str] = None, user_id: Optional[str] = None) -> float:
     """Get price per kWh based on account, connector, and user's pricing group"""
     
