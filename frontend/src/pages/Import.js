@@ -51,17 +51,17 @@ function Import() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Debug: Check if token exists
-      console.log('Token available:', !!token);
-      console.log('File name:', file.name);
-      console.log('File size:', file.size);
-      console.log('File type:', file.type);
+      // Use axios defaults (token set by AuthContext) plus explicit header as backup
+      const headers = {
+        'Content-Type': 'multipart/form-data',
+      };
+      
+      // Add token explicitly as backup in case axios defaults aren't set
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
 
-      const response = await axios.post(`${API}/transactions/import`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await axios.post(`${API}/transactions/import`, formData, { headers });
 
       setResult(response.data);
       setFile(null);
@@ -70,8 +70,6 @@ function Import() {
       }
     } catch (error) {
       console.error('Import error:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
       
       let errorMessage = 'Failed to upload file';
       
