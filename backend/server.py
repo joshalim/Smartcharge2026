@@ -35,7 +35,7 @@ except ImportError:
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# Force PostgreSQL mode - MongoDB is no longer supported
+# PostgreSQL Database
 DATABASE_TYPE = 'postgresql'
 from database import init_db
 from db_adapter import db
