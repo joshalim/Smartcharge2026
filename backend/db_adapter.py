@@ -144,7 +144,7 @@ class PostgresCollection:
             else:
                 update_data = data
             
-            prepared = prepare_data(update_data)
+            prepared = prepare_data(update_data, self.model)
             
             query = update(self.model)
             for key, value in filters.items():
