@@ -25,6 +25,7 @@ MODEL_MAP = {
     'rfid_cards': RFIDCard,
     'rfid_history': RFIDHistory,
     'ocpp_sessions': OCPPSession,
+    'ocpp_transactions': OCPPSession,  # Alias for compatibility
     'app_config': AppConfig,
 }
 
