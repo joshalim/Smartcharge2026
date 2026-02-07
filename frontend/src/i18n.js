@@ -40,6 +40,17 @@ const resources = {
       'dashboard.uniqueAccounts': 'Unique Accounts',
       'dashboard.recentTransactions': 'Recent Transactions',
       'dashboard.noTransactions': 'No transactions yet. Import data to get started.',
+      'dashboard.financialOverview': 'Financial Overview',
+      'dashboard.totalIncome': 'Total Income',
+      'dashboard.totalExpenses': 'Total Expenses',
+      'dashboard.netProfit': 'Net Profit',
+      'dashboard.profitMargin': 'Profit Margin',
+      'dashboard.monthlyIncomeExpenses': 'Monthly Income vs Expenses',
+      'dashboard.profitTrend': 'Profit Trend & Margin',
+      'dashboard.incomeExpenseDistribution': 'Income/Expense Distribution',
+      'dashboard.income': 'Income',
+      'dashboard.expenses': 'Expenses',
+      'dashboard.profit': 'Profit',
       
       // Transactions
       'transactions.title': 'Transactions',
