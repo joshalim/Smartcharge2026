@@ -228,6 +228,14 @@ async def update_user(
         if user_data.placa is not None:
             user.placa = user_data.placa or None
         
+        # Update phone number
+        if user_data.phone is not None:
+            user.phone = user_data.phone or None
+        
+        # Update WhatsApp notifications preference
+        if user_data.whatsapp_enabled is not None:
+            user.whatsapp_enabled = user_data.whatsapp_enabled
+        
         await session.commit()
         await session.refresh(user)
         
@@ -236,11 +244,13 @@ async def update_user(
             email=user.email,
             name=user.name,
             role=user.role,
+            phone=user.phone,
             pricing_group_id=user.pricing_group_id,
             rfid_card_number=user.rfid_card_number,
             rfid_balance=user.rfid_balance or 0.0,
             rfid_status=user.rfid_status or "active",
             placa=user.placa,
+            whatsapp_enabled=user.whatsapp_enabled if hasattr(user, 'whatsapp_enabled') else True,
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
