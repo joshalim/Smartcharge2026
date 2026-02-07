@@ -149,7 +149,8 @@ async def ocpp_db_callback(event_type: str, data: dict):
         elif event_type == 'transaction_stopped':
             result = await session.execute(
                 select(OCPPTransaction).where(
-                    OCPPTransaction.transaction_id == data['transaction_id']
+                    OCPPTransaction.transaction_id == data['transaction_id'],
+                    OCPPTransaction.status == 'active'
                 )
             )
             tx = result.scalar_one_or_none()
