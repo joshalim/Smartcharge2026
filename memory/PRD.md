@@ -115,6 +115,12 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - GET/POST /api/settings/sendgrid - SendGrid configuration
 - POST /api/settings/sendgrid/test - Test email
 
+### Authentication
+- POST /api/auth/login - User login
+- POST /api/auth/register - User registration
+- GET /api/auth/me - Get current user
+- **POST /api/auth/change-password** - Change password for current user
+
 ### RFID Cards
 - GET/POST /api/rfid-cards - List and create cards
 - GET/PATCH/DELETE /api/rfid-cards/{id} - Single card operations
