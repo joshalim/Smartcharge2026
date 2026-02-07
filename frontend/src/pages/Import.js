@@ -1,14 +1,11 @@
 import React, { useState, useRef } from 'react';
-import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Upload, CheckCircle2, AlertTriangle, X, FileSpreadsheet } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 function Import() {
   const { t } = useTranslation();
-  const { token } = useAuth();
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
@@ -48,20 +45,32 @@ function Import() {
     setResult(null);
 
     try {
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
-      // Get token from localStorage as backup
-      const authToken = token || localStorage.getItem('token');
-      
-      // Don't set Content-Type for FormData - browser sets it automatically with boundary
-      const response = await axios.post(`${API}/transactions/import`, formData, {
+      // Use native fetch for more reliable file upload
+      const response = await fetch(`${API}/transactions/import`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
       });
 
-      setResult(response.data);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Server error: ${response.status}`);
+      }
+
+      setResult(data);
       setFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -69,23 +78,11 @@ function Import() {
     } catch (error) {
       console.error('Import error:', error);
       
-      let errorMessage = 'Failed to upload file';
-      
-      if (error.response?.status === 401) {
-        errorMessage = 'Authentication failed. Please log in again.';
-      } else if (error.response?.status === 422) {
-        errorMessage = error.response?.data?.detail || 'Invalid file format or missing required columns';
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
       setResult({
         success: false,
         imported_count: 0,
         skipped_count: 0,
-        errors: [{ row: 0, field: 'File', message: errorMessage }],
+        errors: [{ row: 0, field: 'File', message: error.message || 'Failed to upload file' }],
       });
     } finally {
       setUploading(false);
