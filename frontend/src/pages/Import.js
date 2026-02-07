@@ -51,17 +51,15 @@ function Import() {
       const formData = new FormData();
       formData.append('file', file);
 
-      // Use axios defaults (token set by AuthContext) plus explicit header as backup
-      const headers = {
-        'Content-Type': 'multipart/form-data',
-      };
+      // Get token from localStorage as backup
+      const authToken = token || localStorage.getItem('token');
       
-      // Add token explicitly as backup in case axios defaults aren't set
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await axios.post(`${API}/transactions/import`, formData, { headers });
+      // Don't set Content-Type for FormData - browser sets it automatically with boundary
+      const response = await axios.post(`${API}/transactions/import`, formData, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
 
       setResult(response.data);
       setFile(null);
