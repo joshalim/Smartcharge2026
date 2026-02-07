@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 class EVChargingAPITester:
-    def __init__(self, base_url="https://chargewallet-app.preview.emergentagent.com/api"):
+    def __init__(self, base_url="https://evtrans-hub.preview.emergentagent.com/api"):
         self.base_url = base_url
         self.admin_token = None
         self.user_token = None
