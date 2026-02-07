@@ -227,6 +227,79 @@ class PostgresCollection:
             
             result = await session.execute(query)
             return [row[0] for row in result.fetchall() if row[0] is not None]
+    
+    def aggregate(self, pipeline: List[dict]):
+        """
+        Simulate MongoDB aggregation pipeline.
+        Returns an AggregationCursor that can be awaited.
+        """
+        return AggregationCursor(self.model, pipeline)
+
+
+class AggregationCursor:
+    """Simulates MongoDB aggregation cursor for PostgreSQL"""
+    
+    def __init__(self, model, pipeline: List[dict]):
+        self.model = model
+        self.pipeline = pipeline
+    
+    async def to_list(self, length: int = None) -> List[dict]:
+        """Execute aggregation and return results"""
+        async with async_session() as session:
+            # For simple $group aggregations, translate to SQL
+            results = []
+            
+            # Check for $group stage
+            group_stage = None
+            match_stage = None
+            
+            for stage in self.pipeline:
+                if '$group' in stage:
+                    group_stage = stage['$group']
+                if '$match' in stage:
+                    match_stage = stage['$match']
+            
+            if group_stage:
+                # Handle common aggregation patterns
+                group_id = group_stage.get('_id')
+                
+                # Simple count/sum aggregation
+                if 'total' in group_stage or 'count' in group_stage:
+                    # Get all records and compute in Python
+                    query = select(self.model)
+                    if match_stage:
+                        for key, value in match_stage.items():
+                            if hasattr(self.model, key):
+                                query = query.where(getattr(self.model, key) == value)
+                    
+                    result = await session.execute(query)
+                    rows = result.scalars().all()
+                    
+                    # Compute aggregations
+                    total_sum = {}
+                    count = len(rows)
+                    
+                    for field_name, agg_op in group_stage.items():
+                        if field_name == '_id':
+                            continue
+                        if isinstance(agg_op, dict):
+                            if '$sum' in agg_op:
+                                sum_field = agg_op['$sum']
+                                if isinstance(sum_field, str) and sum_field.startswith('$'):
+                                    field = sum_field[1:]
+                                    total_sum[field_name] = sum(
+                                        getattr(row, field, 0) or 0 
+                                        for row in rows
+                                    )
+                                elif sum_field == 1:
+                                    total_sum[field_name] = count
+                    
+                    results = [{'_id': None, **total_sum}]
+            else:
+                # No aggregation, just return empty
+                results = []
+            
+            return results
 
 
 class PostgresCursor:
