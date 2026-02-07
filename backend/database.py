@@ -103,9 +103,10 @@ class RFIDCard(Base):
     
     id = Column(String, primary_key=True, default=generate_uuid)
     card_number = Column(String, unique=True, nullable=False, index=True)
-    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     balance = Column(Float, default=0)
     status = Column(String, default="active")  # active, inactive, blocked
+    is_active = Column(Boolean, default=True)
     low_balance_threshold = Column(Float, default=10000)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
