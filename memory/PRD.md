@@ -32,10 +32,14 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Edit user details (name, email, password)
 - Delete users
 - Role management
-- **NEW: User Import from Excel/CSV** ✅ (Jan 2026)
+- **RFID integrated into User** - Each user has one RFID card (Feb 2026)
+  - RFID Card Number (unique)
+  - RFID Balance (COP)
+  - RFID Status (active/inactive/blocked)
+  - Top-up balance functionality
+- **User Import from Excel/CSV** ✅ (Jan 2026)
   - Supports .xlsx, .xls, .csv files
-  - Columns: Name, Email, Role (optional), Group (optional)
-  - Auto-assigns pricing groups if specified
+  - Columns: Name, Email, Role (optional), RFID Card Number, RFID Balance
   - Default password: ChangeMeNow123!
 
 ### 3. Pricing Groups ✅ (Added Jan 2026)
