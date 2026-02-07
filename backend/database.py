@@ -172,7 +172,7 @@ class Settings(Base):
 
 
 class PayUPayment(Base):
-    """PayU payment records"""
+    """PayU payment records (legacy - kept for backwards compatibility)"""
     __tablename__ = "payu_payments"
     
     id = Column(String, primary_key=True, default=generate_uuid)
@@ -192,8 +192,39 @@ class PayUPayment(Base):
 
 
 class PayUWebhookLog(Base):
-    """PayU webhook logs"""
+    """PayU webhook logs (legacy - kept for backwards compatibility)"""
     __tablename__ = "payu_webhook_logs"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    reference_code = Column(String, index=True)
+    webhook_data = Column(JSON, default=dict)
+    received_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class BoldPayment(Base):
+    """BOLD.CO payment records"""
+    __tablename__ = "bold_payments"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    reference_code = Column(String, unique=True, nullable=False, index=True)
+    payment_link_id = Column(String, index=True)  # BOLD.CO LNK_xxx ID
+    rfid_card_id = Column(String)
+    card_number = Column(String)
+    user_id = Column(String)
+    amount = Column(Float)
+    buyer_name = Column(String)
+    buyer_email = Column(String)
+    buyer_phone = Column(String)
+    status = Column(String, default="ACTIVE")  # ACTIVE, PROCESSING, PAID, REJECTED, CANCELLED, EXPIRED
+    bold_response = Column(JSON, default=dict)
+    bold_transaction_id = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class BoldWebhookLog(Base):
+    """BOLD.CO webhook logs"""
+    __tablename__ = "bold_webhook_logs"
     
     id = Column(String, primary_key=True, default=generate_uuid)
     reference_code = Column(String, index=True)
