@@ -97,6 +97,37 @@ function Transactions() {
     setTimeout(() => fetchTransactions(), 0);
   };
 
+  const createTransaction = async () => {
+    if (!createForm.tx_id || !createForm.station || !createForm.meter_value) {
+      alert('TxID, Station, and Meter Value are required');
+      return;
+    }
+    
+    setCreating(true);
+    try {
+      await axios.post(`${API}/transactions`, {
+        ...createForm,
+        meter_value: parseFloat(createForm.meter_value) || 0,
+      });
+      setShowCreateModal(false);
+      setCreateForm({
+        tx_id: '',
+        station: '',
+        connector: '',
+        account: '',
+        start_time: '',
+        end_time: '',
+        meter_value: '',
+      });
+      fetchTransactions();
+    } catch (error) {
+      console.error('Failed to create transaction:', error);
+      alert(error.response?.data?.detail || 'Failed to create transaction');
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const deleteTransaction = async (id) => {
     if (!window.confirm(t('transactions.deleteConfirm'))) return;
 
