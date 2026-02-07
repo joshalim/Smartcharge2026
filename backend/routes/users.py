@@ -64,6 +64,7 @@ async def get_users(current_user: UserResponse = Depends(require_role("admin")))
                 rfid_card_number=u.rfid_card_number,
                 rfid_balance=u.rfid_balance or 0.0,
                 rfid_status=u.rfid_status or "active",
+                placa=u.placa,
                 created_at=u.created_at.isoformat() if u.created_at else None
             )
             for u in users
