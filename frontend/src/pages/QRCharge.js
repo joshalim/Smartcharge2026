@@ -342,12 +342,12 @@ function QRCharge() {
           </div>
         </div>
 
-        {/* PayU Info Banner */}
+        {/* BOLD.CO Info Banner */}
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4 flex items-start gap-3">
           <ExternalLink className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">Secure Payment via PayU</p>
-            <p className="text-xs text-blue-600 dark:text-blue-500">You will be redirected to PayU to complete payment securely.</p>
+            <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">Secure Payment via BOLD.CO</p>
+            <p className="text-xs text-blue-600 dark:text-blue-500">Pay with credit card, PSE, Bancolombia, or Nequi.</p>
           </div>
         </div>
 
