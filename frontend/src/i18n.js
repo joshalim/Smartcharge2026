@@ -135,6 +135,25 @@ const resources = {
       'pricing.cancel': 'Cancel',
       'pricing.deleteConfirm': 'Are you sure you want to delete this pricing rule?',
       
+      // Expenses
+      'expenses.title': 'Expenses',
+      'expenses.subtitle': 'Track and manage business expenses',
+      'expenses.addNew': 'Add Expense',
+      'expenses.edit': 'Edit Expense',
+      'expenses.name': 'Expense Name',
+      'expenses.namePlaceholder': 'e.g., Electricity Bill',
+      'expenses.date': 'Date',
+      'expenses.cost': 'Cost',
+      'expenses.reason': 'Reason',
+      'expenses.reasonPlaceholder': 'Description of the expense...',
+      'expenses.actions': 'Actions',
+      'expenses.totalExpenses': 'Total Expenses',
+      'expenses.entries': 'entries',
+      'expenses.noExpenses': 'No expenses recorded',
+      'expenses.addFirst': 'Add your first expense to start tracking',
+      'expenses.searchPlaceholder': 'Search expenses...',
+      'expenses.deleteConfirm': 'Are you sure you want to delete this expense?',
+      
       // Common
       'common.loading': 'Loading...',
       'common.pleaseWait': 'Please wait...',
