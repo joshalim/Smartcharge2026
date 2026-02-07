@@ -149,6 +149,19 @@ async def health_check():
     }
 
 
+# Simple test endpoint for file upload debugging
+@app.post("/api/test-upload")
+async def test_upload(file: UploadFile = File(...)):
+    """Test file upload without authentication"""
+    from fastapi import UploadFile, File
+    contents = await file.read()
+    return {
+        "filename": file.filename,
+        "size": len(contents),
+        "content_type": file.content_type
+    }
+
+
 # Filter endpoints (moved from dashboard for backwards compatibility)
 @app.get("/api/filters/stations")
 async def get_stations():
