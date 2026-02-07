@@ -31,7 +31,7 @@ function Transactions() {
   const [createForm, setCreateForm] = useState({
     tx_id: '',
     station: '',
-    connector: '',
+    connector_type: '',
     account: '',
     start_time: '',
     end_time: '',
