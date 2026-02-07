@@ -25,6 +25,7 @@ class UserCreate(BaseModel):
     role: str = "user"
     rfid_card_number: Optional[str] = None
     rfid_balance: Optional[float] = 0.0
+    placa: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
@@ -34,6 +35,7 @@ class UserUpdate(BaseModel):
     rfid_card_number: Optional[str] = None
     rfid_balance: Optional[float] = None
     rfid_status: Optional[str] = None
+    placa: Optional[str] = None
 
 
 class UserImportResult(BaseModel):
