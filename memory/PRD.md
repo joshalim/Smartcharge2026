@@ -153,6 +153,10 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 8. ✅ Windows Server startup scripts
 9. ✅ Connector pricing step reduced to 50 COP
 10. ✅ Fixed pricing rules and pricing groups API endpoints
+11. ✅ **P0 Bug Fix**: db_adapter.py handles MongoDB-style operators ($ne, $gt, $in, etc.) - User updates now work correctly
+12. ✅ **P1 Bug Fix**: Charger creation form includes required charger_id field
+13. ✅ **P1 Bug Fix**: OCPP status endpoint working (OCPPSession model mapped correctly)
+14. ✅ **P1 Bug Fix**: OCPP.js frontend charger.connectors compatibility fix
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation
