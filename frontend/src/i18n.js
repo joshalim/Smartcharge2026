@@ -13,6 +13,7 @@ const resources = {
       'nav.pricingGroups': 'Pricing Groups',
       'nav.chargers': 'Chargers',
       'nav.reports': 'Reports',
+      'nav.expenses': 'Expenses',
       'nav.settings': 'Settings',
       'nav.logout': 'Logout',
       
