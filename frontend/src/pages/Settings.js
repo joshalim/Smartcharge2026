@@ -58,13 +58,13 @@ function Settings() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const [payuRes, sendgridRes, webhookRes] = await Promise.all([
-        axios.get(`${API}/settings/payu`),
+      const [boldRes, sendgridRes, webhookRes] = await Promise.all([
+        axios.get(`${API}/settings/bold`),
         axios.get(`${API}/settings/sendgrid`),
         axios.get(`${API}/invoice-webhook/config`)
       ]);
       
-      setPayuSettings(prev => ({ ...prev, ...payuRes.data }));
+      setBoldSettings(prev => ({ ...prev, ...boldRes.data }));
       setSendgridSettings(prev => ({ ...prev, ...sendgridRes.data }));
       setWebhookSettings(prev => ({ ...prev, ...webhookRes.data }));
     } catch (error) {
@@ -88,13 +88,13 @@ function Settings() {
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const savePayuSettings = async () => {
+  const saveBoldSettings = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/settings/payu`, payuSettings);
-      showMessage('success', 'PayU settings saved successfully');
+      await axios.put(`${API}/settings/bold`, boldSettings);
+      showMessage('success', 'BOLD.CO settings saved successfully');
     } catch (error) {
-      showMessage('error', error.response?.data?.detail || 'Failed to save PayU settings');
+      showMessage('error', error.response?.data?.detail || 'Failed to save BOLD.CO settings');
     } finally {
       setSaving(false);
     }
