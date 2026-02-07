@@ -106,6 +106,14 @@ function AppRoutes() {
           }
         />
         <Route
+          path="expenses"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'user']}>
+              <Expenses />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="settings"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
