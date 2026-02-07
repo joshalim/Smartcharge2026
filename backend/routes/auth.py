@@ -42,6 +42,9 @@ class UserResponse(BaseModel):
     name: str
     role: str
     pricing_group_id: Optional[str] = None
+    rfid_card_number: Optional[str] = None
+    rfid_balance: Optional[float] = 0.0
+    rfid_status: Optional[str] = "active"
     created_at: Optional[str] = None
 
     class Config:
