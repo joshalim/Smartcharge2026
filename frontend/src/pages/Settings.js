@@ -737,6 +737,151 @@ function Settings() {
         </div>
       )}
 
+      {/* WhatsApp (Twilio) Settings */}
+      {activeTab === 'whatsapp' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+              <Zap className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>WhatsApp Notifications</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Send notifications via Twilio WhatsApp</p>
+            </div>
+          </div>
+
+          {/* Info Banner */}
+          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4 mb-6 flex items-start gap-3">
+            <Zap className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm text-green-700 dark:text-green-400 font-medium">Notification Types</p>
+              <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                Payment confirmed, Charging started, Charging completed, Low balance alerts, Balance top-up
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-950/30 rounded-lg mb-6">
+            <div>
+              <p className="font-medium">Enable WhatsApp Notifications</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Send messages to users with phone numbers</p>
+            </div>
+            <button
+              onClick={() => setTwilioSettings({...twilioSettings, enabled: !twilioSettings.enabled})}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                twilioSettings.enabled ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-600'
+              }`}
+              data-testid="twilio-enabled"
+            >
+              <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                twilioSettings.enabled ? 'translate-x-7' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+          
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Twilio Account SID</label>
+              <input
+                type="text"
+                value={twilioSettings.account_sid}
+                onChange={(e) => setTwilioSettings({...twilioSettings, account_sid: e.target.value})}
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                data-testid="twilio-account-sid"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Twilio Auth Token</label>
+              <div className="relative">
+                <input
+                  type={showApiKey.twilio ? 'text' : 'password'}
+                  value={twilioSettings.auth_token}
+                  onChange={(e) => setTwilioSettings({...twilioSettings, auth_token: e.target.value})}
+                  className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm pr-10"
+                  placeholder="Your Twilio Auth Token"
+                  data-testid="twilio-auth-token"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey({...showApiKey, twilio: !showApiKey.twilio})}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                >
+                  {showApiKey.twilio ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">WhatsApp Number (From)</label>
+              <input
+                type="text"
+                value={twilioSettings.whatsapp_number}
+                onChange={(e) => setTwilioSettings({...twilioSettings, whatsapp_number: e.target.value})}
+                className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                placeholder="whatsapp:+14155238886"
+                data-testid="twilio-whatsapp-number"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Use Twilio Sandbox number for testing: whatsapp:+14155238886
+              </p>
+            </div>
+          </div>
+          
+          <button
+            onClick={saveTwilioSettings}
+            disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors font-medium disabled:opacity-50"
+            data-testid="save-twilio-btn"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save WhatsApp Settings'}
+          </button>
+
+          {/* Test WhatsApp Section */}
+          <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h3 className="font-medium mb-4">Test WhatsApp Notification</h3>
+            <div className="flex gap-3">
+              <input
+                type="tel"
+                value={testWhatsAppPhone}
+                onChange={(e) => setTestWhatsAppPhone(e.target.value)}
+                placeholder="+573001234567"
+                className="flex-1 h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
+                data-testid="test-whatsapp-phone"
+              />
+              <button
+                onClick={testTwilioWhatsApp}
+                disabled={testingWhatsApp}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors font-medium disabled:opacity-50"
+                data-testid="test-twilio-btn"
+              >
+                <TestTube className="w-4 h-4" />
+                {testingWhatsApp ? 'Sending...' : 'Send Test'}
+              </button>
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Note: For Twilio Sandbox, the recipient must first send "join &lt;your-sandbox-code&gt;" to the Twilio WhatsApp number.
+            </p>
+          </div>
+
+          {/* Setup Instructions */}
+          <div className="mt-6 border-t border-slate-200 dark:border-slate-800 pt-6">
+            <h3 className="font-medium mb-3">Setup Instructions</h3>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+              <ol className="list-decimal list-inside space-y-2 text-sm text-slate-600 dark:text-slate-400">
+                <li>Create a Twilio account at <a href="https://www.twilio.com" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">twilio.com</a></li>
+                <li>Enable WhatsApp in your Twilio console</li>
+                <li>For testing, use the Twilio Sandbox (free)</li>
+                <li>For production, apply for a WhatsApp Business account</li>
+                <li>Copy your Account SID and Auth Token from the Twilio dashboard</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* SendGrid Settings */}
       {activeTab === 'sendgrid' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
