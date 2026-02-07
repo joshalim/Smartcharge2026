@@ -12,6 +12,7 @@ import OCPP from './pages/OCPP';
 import Chargers from './pages/Chargers';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Expenses from './pages/Expenses';
 import Layout from './components/Layout';
 import QRCharge from './pages/QRCharge';
 import PaymentResult from './pages/PaymentResult';
