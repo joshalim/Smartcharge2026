@@ -9,6 +9,9 @@ import asyncio
 import websockets
 from datetime import datetime
 
+# Configure pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
+
 # Import OCPP library for WebSocket testing
 try:
     from ocpp.v16 import call, ChargePoint as cp
@@ -379,7 +382,7 @@ class TestOCPPRemoteCommands:
 class TestOCPPWebSocket:
     """Test OCPP WebSocket server functionality"""
     
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_websocket_boot_notification(self):
         """Test WebSocket BootNotification"""
         charger_id = f"TEST-WS-{datetime.utcnow().strftime('%H%M%S')}"
@@ -396,7 +399,7 @@ class TestOCPPWebSocket:
             finally:
                 await ws.close()
     
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_websocket_heartbeat(self):
         """Test WebSocket Heartbeat"""
         charger_id = f"TEST-HB-{datetime.utcnow().strftime('%H%M%S')}"
@@ -416,7 +419,7 @@ class TestOCPPWebSocket:
             finally:
                 await ws.close()
     
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_websocket_status_notification(self):
         """Test WebSocket StatusNotification"""
         charger_id = f"TEST-SN-{datetime.utcnow().strftime('%H%M%S')}"
@@ -440,7 +443,7 @@ class TestOCPPWebSocket:
             finally:
                 await ws.close()
     
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_websocket_authorize(self):
         """Test WebSocket Authorize"""
         charger_id = f"TEST-AUTH-{datetime.utcnow().strftime('%H%M%S')}"
@@ -463,7 +466,7 @@ class TestOCPPWebSocket:
             finally:
                 await ws.close()
     
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio(loop_scope="function")
     async def test_websocket_full_transaction_flow(self):
         """Test complete WebSocket transaction flow"""
         charger_id = f"TEST-TX-{datetime.utcnow().strftime('%H%M%S')}"
