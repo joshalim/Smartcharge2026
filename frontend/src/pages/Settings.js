@@ -255,7 +255,7 @@ function Settings() {
   const tabs = [
     { id: 'account', name: 'Account', icon: User },
     { id: 'qrcodes', name: 'QR Codes', icon: QrCode },
-    { id: 'payu', name: 'PayU Colombia', icon: CreditCard },
+    { id: 'bold', name: 'BOLD.CO', icon: CreditCard },
     { id: 'sendgrid', name: 'Email (SendGrid)', icon: Mail },
     { id: 'webhook', name: 'FullColombia', icon: Webhook },
   ];
