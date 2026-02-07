@@ -1,5 +1,5 @@
 """
-SmartCharge EV Charging Management System - Modular Server (MongoDB)
+SmartCharge EV Charging Management System - Modular Server
 """
 import os
 import logging
@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import bcrypt
 import uuid
 
-from database import init_db, get_db, User
+from database import engine, Base, async_session, User
 
 # Configure logging
 logging.basicConfig(
@@ -34,10 +34,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting SmartCharge server...")
     
     # Initialize database
-    logger.info("Initializing MongoDB database...")
+    logger.info("Initializing PostgreSQL database...")
     try:
-        db = await init_db()
-        logger.info("✓ MongoDB initialized")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✓ PostgreSQL initialized")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         raise
@@ -45,25 +46,31 @@ async def lifespan(app: FastAPI):
     # Create admin user if not exists
     logger.info("Checking for admin user...")
     try:
-        admin = await db.users.find_one({"email": "admin@evcharge.com"})
-        
-        if not admin:
-            password_hash = bcrypt.hashpw(
-                "admin123".encode('utf-8'), 
-                bcrypt.gensalt()
-            ).decode('utf-8')
-            
-            admin_user = User(
-                id=str(uuid.uuid4()),
-                email="admin@evcharge.com",
-                name="Administrator",
-                password_hash=password_hash,
-                role="admin"
+        async with async_session() as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(User).where(User.email == "admin@evcharge.com")
             )
-            await db.users.insert_one(admin_user.to_dict())
-            logger.info("✓ Admin user created: admin@evcharge.com / admin123")
-        else:
-            logger.info(f"✓ Admin user exists: {admin['email']}")
+            admin = result.scalar_one_or_none()
+            
+            if not admin:
+                password_hash = bcrypt.hashpw(
+                    "admin123".encode('utf-8'), 
+                    bcrypt.gensalt()
+                ).decode('utf-8')
+                
+                admin = User(
+                    id=str(uuid.uuid4()),
+                    email="admin@evcharge.com",
+                    name="Administrator",
+                    password_hash=password_hash,
+                    role="admin"
+                )
+                session.add(admin)
+                await session.commit()
+                logger.info("✓ Admin user created: admin@evcharge.com / admin123")
+            else:
+                logger.info(f"✓ Admin user exists: {admin.email}")
     except Exception as e:
         logger.error(f"Admin user check failed: {e}")
     
@@ -97,7 +104,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=False,  # Must be False when allow_origins is "*"
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -150,6 +157,7 @@ async def health_check():
 @app.post("/api/test-upload")
 async def test_upload(file: UploadFile = File(...)):
     """Test file upload without authentication"""
+    from fastapi import UploadFile, File
     contents = await file.read()
     return {
         "filename": file.filename,
@@ -162,51 +170,67 @@ async def test_upload(file: UploadFile = File(...)):
 @app.get("/api/filters/stations")
 async def get_stations():
     """Get unique stations (backwards compatibility)"""
-    db = await get_db()
-    stations = await db.transactions.distinct("station")
-    return sorted([s for s in stations if s])
+    from routes.dashboard import get_stations as dashboard_get_stations
+    from routes.auth import get_current_user, security
+    # This is a public endpoint for filters
+    from sqlalchemy import select
+    from database import Transaction
+    
+    async with async_session() as session:
+        result = await session.execute(
+            select(Transaction.station).distinct()
+        )
+        stations = [row[0] for row in result.fetchall() if row[0]]
+        return sorted(stations)
 
 
 @app.get("/api/filters/accounts")
 async def get_accounts():
     """Get unique accounts (backwards compatibility)"""
-    db = await get_db()
-    accounts = await db.transactions.distinct("account")
-    return sorted([a for a in accounts if a])
+    from sqlalchemy import select
+    from database import Transaction
+    
+    async with async_session() as session:
+        result = await session.execute(
+            select(Transaction.account).distinct()
+        )
+        accounts = [row[0] for row in result.fetchall() if row[0]]
+        return sorted(accounts)
 
 
 # Admin setup endpoint for manual admin creation/reset
 @app.post("/api/setup/admin")
 async def setup_admin():
     """Create or reset admin user"""
-    db = await get_db()
-    admin = await db.users.find_one({"email": "admin@evcharge.com"})
-    
-    password_hash = bcrypt.hashpw(
-        "admin123".encode('utf-8'),
-        bcrypt.gensalt()
-    ).decode('utf-8')
-    
-    if admin:
-        await db.users.update_one(
-            {"email": "admin@evcharge.com"},
-            {"$set": {
-                "password_hash": password_hash,
-                "name": "Administrator",
-                "role": "admin"
-            }}
+    async with async_session() as session:
+        from sqlalchemy import select
+        result = await session.execute(
+            select(User).where(User.email == "admin@evcharge.com")
         )
-        return {"message": "Admin password reset to: admin123"}
-    else:
-        admin_user = User(
-            id=str(uuid.uuid4()),
-            email="admin@evcharge.com",
-            name="Administrator",
-            password_hash=password_hash,
-            role="admin"
-        )
-        await db.users.insert_one(admin_user.to_dict())
-        return {"message": "Admin user created: admin@evcharge.com / admin123"}
+        admin = result.scalar_one_or_none()
+        
+        password_hash = bcrypt.hashpw(
+            "admin123".encode('utf-8'),
+            bcrypt.gensalt()
+        ).decode('utf-8')
+        
+        if admin:
+            admin.password_hash = password_hash
+            admin.name = "Administrator"
+            admin.role = "admin"
+            await session.commit()
+            return {"message": "Admin password reset to: admin123"}
+        else:
+            admin = User(
+                id=str(uuid.uuid4()),
+                email="admin@evcharge.com",
+                name="Administrator",
+                password_hash=password_hash,
+                role="admin"
+            )
+            session.add(admin)
+            await session.commit()
+            return {"message": "Admin user created: admin@evcharge.com / admin123"}
 
 
 if __name__ == "__main__":

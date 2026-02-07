@@ -1,5 +1,5 @@
 """
-Authentication routes - Login, Register, Token validation (MongoDB)
+Authentication routes - Login, Register, Token validation
 """
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -11,7 +11,8 @@ import jwt
 import uuid
 import os
 
-from database import get_db, User
+from sqlalchemy import select
+from database import async_session, User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()
@@ -87,28 +88,23 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        db = await get_db()
-        user = await db.users.find_one({"id": user_id})
-        
-        if user is None:
-            raise HTTPException(status_code=401, detail="User not found")
-        
-        created_at = user.get('created_at')
-        if isinstance(created_at, datetime):
-            created_at = created_at.isoformat()
-        
-        return UserResponse(
-            id=user['id'],
-            email=user['email'],
-            name=user['name'],
-            role=user.get('role', 'user'),
-            pricing_group_id=user.get('pricing_group_id'),
-            rfid_card_number=user.get('rfid_card_number'),
-            rfid_balance=user.get('rfid_balance', 0.0),
-            rfid_status=user.get('rfid_status', 'active'),
-            placa=user.get('placa'),
-            created_at=created_at
-        )
+        async with async_session() as session:
+            result = await session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            
+            if user is None:
+                raise HTTPException(status_code=401, detail="User not found")
+            
+            return UserResponse(
+                id=user.id,
+                email=user.email,
+                name=user.name,
+                role=user.role,
+                pricing_group_id=user.pricing_group_id,
+                created_at=user.created_at.isoformat() if user.created_at else None
+            )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.JWTError:
@@ -128,65 +124,62 @@ def require_role(*allowed_roles: str):
 @router.post("/login", response_model=TokenResponse)
 async def login(credentials: UserLogin):
     """Login with email and password"""
-    db = await get_db()
-    user = await db.users.find_one({"email": credentials.email})
-    
-    if not user or not verify_password(credentials.password, user['password_hash']):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    access_token = create_access_token({"sub": user['id']})
-    
-    created_at = user.get('created_at')
-    if isinstance(created_at, datetime):
-        created_at = created_at.isoformat()
-    
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        user=UserResponse(
-            id=user['id'],
-            email=user['email'],
-            name=user['name'],
-            role=user.get('role', 'user'),
-            pricing_group_id=user.get('pricing_group_id'),
-            rfid_card_number=user.get('rfid_card_number'),
-            rfid_balance=user.get('rfid_balance', 0.0),
-            rfid_status=user.get('rfid_status', 'active'),
-            placa=user.get('placa'),
-            created_at=created_at
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.email == credentials.email)
         )
-    )
+        user = result.scalar_one_or_none()
+        
+        if not user or not verify_password(credentials.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+        access_token = create_access_token({"sub": user.id})
+        
+        return TokenResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserResponse(
+                id=user.id,
+                email=user.email,
+                name=user.name,
+                role=user.role,
+                pricing_group_id=user.pricing_group_id,
+                created_at=user.created_at.isoformat() if user.created_at else None
+            )
+        )
 
 
 @router.post("/register", response_model=UserResponse)
 async def register(user_data: UserRegister):
     """Register a new user"""
-    db = await get_db()
-    
-    # Check if email exists
-    existing = await db.users.find_one({"email": user_data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Create new user
-    new_user = User(
-        id=str(uuid.uuid4()),
-        email=user_data.email,
-        name=user_data.name,
-        password_hash=hash_password(user_data.password),
-        role=user_data.role
-    )
-    
-    await db.users.insert_one(new_user.to_dict())
-    
-    return UserResponse(
-        id=new_user.id,
-        email=new_user.email,
-        name=new_user.name,
-        role=new_user.role,
-        pricing_group_id=new_user.pricing_group_id,
-        created_at=new_user.created_at.isoformat() if isinstance(new_user.created_at, datetime) else None
-    )
+    async with async_session() as session:
+        # Check if email exists
+        result = await session.execute(
+            select(User).where(User.email == user_data.email)
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Create new user
+        new_user = User(
+            id=str(uuid.uuid4()),
+            email=user_data.email,
+            name=user_data.name,
+            password_hash=hash_password(user_data.password),
+            role=user_data.role
+        )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
+        
+        return UserResponse(
+            id=new_user.id,
+            email=new_user.email,
+            name=new_user.name,
+            role=new_user.role,
+            pricing_group_id=new_user.pricing_group_id,
+            created_at=new_user.created_at.isoformat() if new_user.created_at else None
+        )
 
 
 @router.get("/me", response_model=UserResponse)
@@ -204,18 +197,19 @@ async def change_password(
     if len(request.new_password) < 6:
         raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
     
-    db = await get_db()
-    user = await db.users.find_one({"id": current_user.id})
-    
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    if not verify_password(request.current_password, user['password_hash']):
-        raise HTTPException(status_code=400, detail="Current password is incorrect")
-    
-    await db.users.update_one(
-        {"id": current_user.id},
-        {"$set": {"password_hash": hash_password(request.new_password)}}
-    )
-    
-    return {"message": "Password changed successfully"}
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.id == current_user.id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not verify_password(request.current_password, user.password_hash):
+            raise HTTPException(status_code=400, detail="Current password is incorrect")
+        
+        user.password_hash = hash_password(request.new_password)
+        await session.commit()
+        
+        return {"message": "Password changed successfully"}

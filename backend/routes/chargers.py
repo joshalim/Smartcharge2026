@@ -1,5 +1,5 @@
 """
-Charger management routes (MongoDB)
+Charger management routes
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -7,7 +7,8 @@ from typing import List, Optional
 from datetime import datetime, timezone
 import uuid
 
-from database import get_db, Charger
+from sqlalchemy import select, delete
+from database import async_session, Charger
 
 from routes.auth import get_current_user, require_role, UserResponse
 
@@ -44,24 +45,16 @@ class ChargerUpdate(BaseModel):
     status: Optional[str] = None
 
 
-def charger_to_response(charger: dict) -> ChargerResponse:
-    last_heartbeat = charger.get('last_heartbeat')
-    if isinstance(last_heartbeat, datetime):
-        last_heartbeat = last_heartbeat.isoformat()
-    
-    created_at = charger.get('created_at')
-    if isinstance(created_at, datetime):
-        created_at = created_at.isoformat()
-    
+def charger_to_response(charger: Charger) -> ChargerResponse:
     return ChargerResponse(
-        id=charger.get('id', ''),
-        charger_id=charger.get('charger_id', ''),
-        name=charger.get('name', ''),
-        location=charger.get('location'),
-        status=charger.get('status', 'Available'),
-        connectors=charger.get('connectors', []),
-        last_heartbeat=last_heartbeat,
-        created_at=created_at
+        id=charger.id,
+        charger_id=charger.charger_id,
+        name=charger.name,
+        location=charger.location,
+        status=charger.status,
+        connectors=charger.connectors or [],
+        last_heartbeat=charger.last_heartbeat.isoformat() if charger.last_heartbeat else None,
+        created_at=charger.created_at.isoformat() if charger.created_at else None
     )
 
 
@@ -69,9 +62,12 @@ def charger_to_response(charger: dict) -> ChargerResponse:
 @router.get("", response_model=List[ChargerResponse])
 async def get_chargers(current_user: UserResponse = Depends(get_current_user)):
     """Get all chargers"""
-    db = await get_db()
-    chargers = await db.chargers.find().sort("created_at", -1).to_list(1000)
-    return [charger_to_response(c) for c in chargers]
+    async with async_session() as session:
+        result = await session.execute(
+            select(Charger).order_by(Charger.created_at.desc())
+        )
+        chargers = result.scalars().all()
+        return [charger_to_response(c) for c in chargers]
 
 
 @router.get("/{charger_id}", response_model=ChargerResponse)
@@ -80,13 +76,16 @@ async def get_charger(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """Get a single charger by ID"""
-    db = await get_db()
-    charger = await db.chargers.find_one({"id": charger_id})
-    
-    if not charger:
-        raise HTTPException(status_code=404, detail="Charger not found")
-    
-    return charger_to_response(charger)
+    async with async_session() as session:
+        result = await session.execute(
+            select(Charger).where(Charger.id == charger_id)
+        )
+        charger = result.scalar_one_or_none()
+        
+        if not charger:
+            raise HTTPException(status_code=404, detail="Charger not found")
+        
+        return charger_to_response(charger)
 
 
 @router.post("", response_model=ChargerResponse)
@@ -95,25 +94,27 @@ async def create_charger(
     current_user: UserResponse = Depends(require_role("admin"))
 ):
     """Create a new charger (Admin only)"""
-    db = await get_db()
-    
-    # Check if charger_id exists
-    existing = await db.chargers.find_one({"charger_id": charger_data.charger_id})
-    if existing:
-        raise HTTPException(status_code=400, detail="Charger ID already exists")
-    
-    new_charger = Charger(
-        id=str(uuid.uuid4()),
-        charger_id=charger_data.charger_id,
-        name=charger_data.name,
-        location=charger_data.location,
-        connectors=charger_data.connectors or [],
-        status=charger_data.status
-    )
-    
-    await db.chargers.insert_one(new_charger.to_dict())
-    
-    return charger_to_response(new_charger.to_dict())
+    async with async_session() as session:
+        # Check if charger_id exists
+        result = await session.execute(
+            select(Charger).where(Charger.charger_id == charger_data.charger_id)
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Charger ID already exists")
+        
+        new_charger = Charger(
+            id=str(uuid.uuid4()),
+            charger_id=charger_data.charger_id,
+            name=charger_data.name,
+            location=charger_data.location,
+            connectors=charger_data.connectors or [],
+            status=charger_data.status
+        )
+        session.add(new_charger)
+        await session.commit()
+        await session.refresh(new_charger)
+        
+        return charger_to_response(new_charger)
 
 
 @router.patch("/{charger_id}", response_model=ChargerResponse)
@@ -123,27 +124,28 @@ async def update_charger(
     current_user: UserResponse = Depends(require_role("admin"))
 ):
     """Update a charger (Admin only)"""
-    db = await get_db()
-    charger = await db.chargers.find_one({"id": charger_id})
-    
-    if not charger:
-        raise HTTPException(status_code=404, detail="Charger not found")
-    
-    update_data = {}
-    if charger_data.name is not None:
-        update_data['name'] = charger_data.name
-    if charger_data.location is not None:
-        update_data['location'] = charger_data.location
-    if charger_data.connectors is not None:
-        update_data['connectors'] = charger_data.connectors
-    if charger_data.status is not None:
-        update_data['status'] = charger_data.status
-    
-    if update_data:
-        await db.chargers.update_one({"id": charger_id}, {"$set": update_data})
-    
-    updated = await db.chargers.find_one({"id": charger_id})
-    return charger_to_response(updated)
+    async with async_session() as session:
+        result = await session.execute(
+            select(Charger).where(Charger.id == charger_id)
+        )
+        charger = result.scalar_one_or_none()
+        
+        if not charger:
+            raise HTTPException(status_code=404, detail="Charger not found")
+        
+        if charger_data.name is not None:
+            charger.name = charger_data.name
+        if charger_data.location is not None:
+            charger.location = charger_data.location
+        if charger_data.connectors is not None:
+            charger.connectors = charger_data.connectors
+        if charger_data.status is not None:
+            charger.status = charger_data.status
+        
+        await session.commit()
+        await session.refresh(charger)
+        
+        return charger_to_response(charger)
 
 
 @router.delete("/{charger_id}")
@@ -152,21 +154,29 @@ async def delete_charger(
     current_user: UserResponse = Depends(require_role("admin"))
 ):
     """Delete a charger (Admin only)"""
-    db = await get_db()
-    result = await db.chargers.delete_one({"id": charger_id})
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Charger not found")
-    
-    return {"message": "Charger deleted successfully"}
+    async with async_session() as session:
+        result = await session.execute(
+            delete(Charger).where(Charger.id == charger_id)
+        )
+        await session.commit()
+        
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Charger not found")
+        
+        return {"message": "Charger deleted successfully"}
 
 
 @router.post("/{charger_id}/heartbeat")
 async def charger_heartbeat(charger_id: str):
     """Update charger heartbeat timestamp"""
-    db = await get_db()
-    await db.chargers.update_one(
-        {"charger_id": charger_id},
-        {"$set": {"last_heartbeat": datetime.now(timezone.utc)}}
-    )
-    return {"currentTime": datetime.now(timezone.utc).isoformat()}
+    async with async_session() as session:
+        result = await session.execute(
+            select(Charger).where(Charger.charger_id == charger_id)
+        )
+        charger = result.scalar_one_or_none()
+        
+        if charger:
+            charger.last_heartbeat = datetime.now(timezone.utc)
+            await session.commit()
+        
+        return {"currentTime": datetime.now(timezone.utc).isoformat()}
