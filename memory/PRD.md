@@ -186,6 +186,8 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 30. ✅ **FEATURE**: Transaction CRUD - Manual add, edit, delete individual transactions (Feb 7, 2026)
 31. ✅ **REFACTOR**: RFID combined into Users - Each user now has integrated RFID card fields (Feb 7, 2026)
 32. ✅ **FEATURE**: Excel import rebuilt - Client-side parsing with SheetJS, sends JSON to backend (Feb 7, 2026)
+33. ✅ **FEATURE**: QR Code Charging - Public page for users to scan QR, select connector, choose amount, and pay via PayU (Feb 7, 2026)
+34. ✅ **FEATURE**: QR Code URLs per connector (CCS2, CHADEMO, J1772) - Settings page shows copyable URLs for each charger's connectors
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
