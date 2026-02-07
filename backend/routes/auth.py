@@ -41,11 +41,13 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
+    phone: Optional[str] = None
     pricing_group_id: Optional[str] = None
     rfid_card_number: Optional[str] = None
     rfid_balance: Optional[float] = 0.0
     rfid_status: Optional[str] = "active"
     placa: Optional[str] = None
+    whatsapp_enabled: Optional[bool] = True
     created_at: Optional[str] = None
 
     class Config:
