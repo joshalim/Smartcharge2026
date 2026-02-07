@@ -12,7 +12,9 @@ from database import (
     async_session, 
     User, Transaction, Charger,
     PricingRule, PricingGroup, RFIDCard, 
-    RFIDHistory, OCPPSession, AppConfig
+    RFIDHistory, OCPPSession, AppConfig,
+    Settings, PayUPayment, PayUWebhookLog,
+    OCPPBoot, OCPPTransaction, InvoiceWebhookConfig, InvoiceWebhookLog
 )
 
 # Model mapping
@@ -20,13 +22,20 @@ MODEL_MAP = {
     'users': User,
     'transactions': Transaction,
     'chargers': Charger,
+    'pricing': PricingRule,  # Map db.pricing to PricingRule
     'pricing_rules': PricingRule,
     'pricing_groups': PricingGroup,
     'rfid_cards': RFIDCard,
     'rfid_history': RFIDHistory,
     'ocpp_sessions': OCPPSession,
-    'ocpp_transactions': OCPPSession,  # Alias for compatibility
     'app_config': AppConfig,
+    'settings': Settings,
+    'payu_payments': PayUPayment,
+    'payu_webhook_logs': PayUWebhookLog,
+    'ocpp_boots': OCPPBoot,
+    'ocpp_transactions': OCPPTransaction,
+    'invoice_webhook_config': InvoiceWebhookConfig,
+    'invoice_webhook_logs': InvoiceWebhookLog,
 }
 
 # Datetime fields that need conversion
