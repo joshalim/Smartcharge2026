@@ -236,7 +236,40 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
   - Reduced polling interval (30s fallback instead of 5s)
 
 ## Upcoming/Future Tasks
-- All planned tasks completed! 🎉
+- Implement Alembic for database migrations (to prevent recurring schema drift issues)
+- Bulk RFID card import from Excel/CSV
+- Export users to Excel button
+
+## QR Code Charging Feature
+**How it works:**
+1. Admin goes to Settings > QR Codes tab
+2. Each charger shows 3 URLs - one for each connector type (CCS2, CHADEMO, J1772)
+3. Copy the URL and generate a QR code using any QR generator
+4. Display the QR code on the charger's screen for that connector
+
+**URL Format:** `https://your-domain.com/charge/{charger_id}?connector={connector_type}`
+
+**User Flow:**
+1. User scans QR code with phone
+2. Opens the charging page with connector pre-selected
+3. Chooses amount (preset or custom)
+4. Optionally enters email, phone, vehicle plate
+5. Clicks "Start Charging" → Redirects to PayU
+6. Completes payment → Returns to result page
+7. Transaction is recorded and charge session starts
+
+**PayU Integration:**
+- Uses PayU Colombia webcheckout flow
+- Requires PayU credentials in Settings > PayU Colombia
+- Supports sandbox (test) and production modes
+- Webhook callback for payment confirmation
+
+**Backend Endpoints:**
+- `GET /api/public/charger/{charger_id}` - Get charger info (no auth)
+- `GET /api/public/pricing` - Get connector pricing (no auth)
+- `POST /api/public/start-charge` - Create charging session (no auth)
+- `GET /api/public/session/{session_id}` - Get session status (no auth)
+- `POST /api/public/payu-webhook` - PayU callback (no auth)
 
 ## Potential Enhancements
 1. **Email template persistence** - Save custom templates to database
