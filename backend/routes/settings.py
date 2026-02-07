@@ -1,5 +1,5 @@
 """
-Settings routes - PayU, SendGrid, Invoice webhook configuration
+Settings routes - BOLD.CO, SendGrid, Invoice webhook configuration
 """
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
@@ -15,7 +15,13 @@ router = APIRouter(prefix="/settings", tags=["Settings"])
 
 
 # Pydantic Models
+class BoldSettings(BaseModel):
+    api_key: Optional[str] = None
+    test_mode: bool = True
+
+
 class PayUSettings(BaseModel):
+    """Legacy PayU settings - kept for backwards compatibility"""
     api_key: Optional[str] = None
     api_login: Optional[str] = None
     merchant_id: Optional[str] = None
@@ -36,9 +42,55 @@ class InvoiceWebhookSettings(BaseModel):
 
 
 # Routes
+@router.get("/bold", response_model=BoldSettings)
+async def get_bold_settings(current_user: UserResponse = Depends(require_role("admin"))):
+    """Get BOLD.CO configuration"""
+    async with async_session() as session:
+        result = await session.execute(
+            select(Settings).where(Settings.type == "bold")
+        )
+        settings = result.scalar_one_or_none()
+        
+        if not settings:
+            return BoldSettings()
+        
+        return BoldSettings(
+            api_key=settings.api_key,
+            test_mode=settings.test_mode if settings.test_mode is not None else True
+        )
+
+
+@router.put("/bold")
+async def update_bold_settings(
+    settings_data: BoldSettings,
+    current_user: UserResponse = Depends(require_role("admin"))
+):
+    """Update BOLD.CO configuration"""
+    async with async_session() as session:
+        result = await session.execute(
+            select(Settings).where(Settings.type == "bold")
+        )
+        settings = result.scalar_one_or_none()
+        
+        if settings:
+            settings.api_key = settings_data.api_key
+            settings.test_mode = settings_data.test_mode
+        else:
+            settings = Settings(
+                id=str(uuid.uuid4()),
+                type="bold",
+                api_key=settings_data.api_key,
+                test_mode=settings_data.test_mode
+            )
+            session.add(settings)
+        
+        await session.commit()
+        return {"message": "BOLD.CO settings updated successfully"}
+
+
 @router.get("/payu", response_model=PayUSettings)
 async def get_payu_settings(current_user: UserResponse = Depends(require_role("admin"))):
-    """Get PayU configuration"""
+    """Get PayU configuration (legacy)"""
     async with async_session() as session:
         result = await session.execute(
             select(Settings).where(Settings.type == "payu")
@@ -62,7 +114,7 @@ async def update_payu_settings(
     settings_data: PayUSettings,
     current_user: UserResponse = Depends(require_role("admin"))
 ):
-    """Update PayU configuration"""
+    """Update PayU configuration (legacy)"""
     async with async_session() as session:
         result = await session.execute(
             select(Settings).where(Settings.type == "payu")
