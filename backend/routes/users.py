@@ -187,6 +187,25 @@ async def update_user(
                 bcrypt.gensalt()
             ).decode('utf-8')
         
+        # Update RFID fields
+        if user_data.rfid_card_number is not None:
+            if user_data.rfid_card_number:
+                # Check if RFID card number is used by another user
+                rfid_check = await session.execute(
+                    select(User).where(User.rfid_card_number == user_data.rfid_card_number, User.id != user_id)
+                )
+                if rfid_check.scalar_one_or_none():
+                    raise HTTPException(status_code=400, detail="RFID card number already assigned")
+            user.rfid_card_number = user_data.rfid_card_number or None
+        
+        if user_data.rfid_balance is not None:
+            user.rfid_balance = user_data.rfid_balance
+        
+        if user_data.rfid_status is not None:
+            if user_data.rfid_status not in ["active", "inactive", "blocked"]:
+                raise HTTPException(status_code=400, detail="Invalid RFID status")
+            user.rfid_status = user_data.rfid_status
+        
         await session.commit()
         await session.refresh(user)
         
@@ -196,6 +215,9 @@ async def update_user(
             name=user.name,
             role=user.role,
             pricing_group_id=user.pricing_group_id,
+            rfid_card_number=user.rfid_card_number,
+            rfid_balance=user.rfid_balance or 0.0,
+            rfid_status=user.rfid_status or "active",
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
