@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
+import { Settings as SettingsIcon, CreditCard, Webhook, Mail, Save, TestTube, Eye, EyeOff, Check, X, AlertCircle, User, Key } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
