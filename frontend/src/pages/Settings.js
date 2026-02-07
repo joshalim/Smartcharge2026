@@ -235,6 +235,122 @@ function Settings() {
         ))}
       </div>
 
+      {/* Account Settings */}
+      {activeTab === 'account' && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
+              <User className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>Account Settings</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Manage your account security</p>
+            </div>
+          </div>
+          
+          {/* User Info */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Email</p>
+                <p className="font-medium">{user?.email || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Name</p>
+                <p className="font-medium">{user?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Role</p>
+                <p className="font-medium capitalize">{user?.role || 'N/A'}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Change Password Section */}
+          <div className="border-t border-slate-200 dark:border-slate-800 pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+              <h3 className="font-medium">Change Password</h3>
+            </div>
+            
+            <div className="space-y-4 max-w-md">
+              <div>
+                <label className="block text-sm font-medium mb-2">Current Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.current ? 'text' : 'password'}
+                    value={passwordData.current_password}
+                    onChange={(e) => setPasswordData({...passwordData, current_password: e.target.value})}
+                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm pr-10"
+                    placeholder="Enter current password"
+                    data-testid="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword({...showPassword, current: !showPassword.current})}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword.current ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.new ? 'text' : 'password'}
+                    value={passwordData.new_password}
+                    onChange={(e) => setPasswordData({...passwordData, new_password: e.target.value})}
+                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm pr-10"
+                    placeholder="Enter new password (min 6 characters)"
+                    data-testid="new-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword({...showPassword, new: !showPassword.new})}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword.confirm ? 'text' : 'password'}
+                    value={passwordData.confirm_password}
+                    onChange={(e) => setPasswordData({...passwordData, confirm_password: e.target.value})}
+                    className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm pr-10"
+                    placeholder="Confirm new password"
+                    data-testid="confirm-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword({...showPassword, confirm: !showPassword.confirm})}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              
+              <button
+                onClick={changePassword}
+                disabled={saving}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors font-medium disabled:opacity-50"
+                data-testid="change-password-btn"
+              >
+                <Key className="w-4 h-4" />
+                {saving ? 'Changing...' : 'Change Password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* PayU Settings */}
       {activeTab === 'payu' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
