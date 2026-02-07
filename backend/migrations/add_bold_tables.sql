@@ -1,5 +1,9 @@
--- SQL Migration: Add BOLD.CO payment tables
+-- SQL Migration: Add BOLD.CO payment tables and user phone fields
 -- Run this in your PostgreSQL database after deploying the new code
+
+-- Add phone and WhatsApp fields to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_enabled BOOLEAN DEFAULT TRUE;
 
 -- Create bold_payments table
 CREATE TABLE IF NOT EXISTS bold_payments (
@@ -39,3 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_bold_webhook_logs_reference_code ON bold_webhook_
 
 -- Note: The existing settings table will be used for BOLD.CO settings
 -- with type='bold' and api_key stored in the api_key column
+-- Twilio settings use type='twilio' with:
+--   - api_login for account_sid
+--   - api_key for auth_token
+--   - sender_email for whatsapp_number
