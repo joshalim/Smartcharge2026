@@ -146,17 +146,6 @@ function Login() {
               {isLogin ? t('auth.noAccount') : t('auth.hasAccount')}
             </button>
           </div>
-
-          {isLogin && (
-            <div className="mt-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Demo Credentials:</p>
-              <div className="space-y-1">
-                <p className="text-xs text-slate-600 dark:text-slate-300">
-                  <span className="font-medium">Admin:</span> admin@evcharge.com / admin123
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
