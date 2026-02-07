@@ -34,6 +34,16 @@ function Settings() {
     test_mode: true
   });
   
+  // Twilio WhatsApp Settings
+  const [twilioSettings, setTwilioSettings] = useState({
+    account_sid: '',
+    auth_token: '',
+    whatsapp_number: '',
+    enabled: false
+  });
+  const [testWhatsAppPhone, setTestWhatsAppPhone] = useState('');
+  const [testingWhatsApp, setTestingWhatsApp] = useState(false);
+  
   // SendGrid Settings
   const [sendgridSettings, setSendgridSettings] = useState({
     api_key: '',
@@ -58,13 +68,15 @@ function Settings() {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const [boldRes, sendgridRes, webhookRes] = await Promise.all([
+      const [boldRes, twilioRes, sendgridRes, webhookRes] = await Promise.all([
         axios.get(`${API}/settings/bold`),
+        axios.get(`${API}/settings/twilio`),
         axios.get(`${API}/settings/sendgrid`),
         axios.get(`${API}/invoice-webhook/config`)
       ]);
       
       setBoldSettings(prev => ({ ...prev, ...boldRes.data }));
+      setTwilioSettings(prev => ({ ...prev, ...twilioRes.data }));
       setSendgridSettings(prev => ({ ...prev, ...sendgridRes.data }));
       setWebhookSettings(prev => ({ ...prev, ...webhookRes.data }));
     } catch (error) {
