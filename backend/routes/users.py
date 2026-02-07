@@ -110,6 +110,14 @@ async def create_user(
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
         
+        # Check if RFID card number exists
+        if user_data.rfid_card_number:
+            result = await session.execute(
+                select(User).where(User.rfid_card_number == user_data.rfid_card_number)
+            )
+            if result.scalar_one_or_none():
+                raise HTTPException(status_code=400, detail="RFID card number already assigned")
+        
         if user_data.role not in ["admin", "user", "viewer"]:
             raise HTTPException(status_code=400, detail="Invalid role")
         
@@ -123,7 +131,10 @@ async def create_user(
             email=user_data.email,
             name=user_data.name,
             password_hash=password_hash,
-            role=user_data.role
+            role=user_data.role,
+            rfid_card_number=user_data.rfid_card_number,
+            rfid_balance=user_data.rfid_balance or 0.0,
+            rfid_status="active"
         )
         session.add(new_user)
         await session.commit()
@@ -135,6 +146,9 @@ async def create_user(
             name=new_user.name,
             role=new_user.role,
             pricing_group_id=new_user.pricing_group_id,
+            rfid_card_number=new_user.rfid_card_number,
+            rfid_balance=new_user.rfid_balance or 0.0,
+            rfid_status=new_user.rfid_status or "active",
             created_at=new_user.created_at.isoformat() if new_user.created_at else None
         )
 
