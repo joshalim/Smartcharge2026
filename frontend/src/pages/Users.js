@@ -60,7 +60,7 @@ function Users() {
       }
       setShowUserModal(false);
       setEditingUser(null);
-      setUserForm({ name: '', email: '', password: '', role: 'user', rfid_card_number: '', rfid_balance: 0 });
+      setUserForm({ name: '', email: '', password: '', role: 'user', rfid_card_number: '', rfid_balance: 0, placa: '' });
       fetchUsers();
     } catch (error) {
       alert(error.response?.data?.detail || 'Operation failed');
