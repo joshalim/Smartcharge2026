@@ -44,6 +44,8 @@ class User(Base):
     rfid_card_number = Column(String, unique=True, nullable=True, index=True)
     rfid_balance = Column(Float, default=0.0)
     rfid_status = Column(String, default="active")  # active, inactive, blocked
+    # Vehicle registration (PLACA) - optional
+    placa = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
