@@ -693,11 +693,7 @@ function Transactions() {
                       )}
                       <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-100">{tx.tx_id}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.account}</td>
-                      <td className="py-3 px-3">
-                        <span className="text-slate-600 dark:text-slate-400">
-                          {tx.connector}{tx.connector_type ? ` - ${tx.connector_type}` : ''}
-                        </span>
-                      </td>
+                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.connector || '-'}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.date}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.time}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.charging_duration || 'N/A'}</td>
