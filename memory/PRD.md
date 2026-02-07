@@ -160,12 +160,45 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 15. ✅ **Critical Fix**: Added missing database models (Settings, PayUPayment, PayUWebhookLog, OCPPBoot, OCPPTransaction, InvoiceWebhookConfig, InvoiceWebhookLog)
 16. ✅ **Critical Fix**: MODEL_MAP updated with 'pricing' → PricingRule alias and all new collections
 17. ✅ **Critical Fix**: db_adapter.py returns proper DeleteResult/UpdateResult objects with attribute access
-18. ✅ **P2 COMPLETE**: Backend refactored - Monolithic server.py (2435 lines) split into 10 modular route files
+18. ✅ **P2 COMPLETE**: Backend refactored - Monolithic server.py (2435 lines) split into 11 modular route files
 19. ✅ **P2 COMPLETE**: Replaced db_adapter.py with direct SQLAlchemy calls in all routes
 20. ✅ **P3 COMPLETE**: Export users to Excel/CSV
 21. ✅ **P3 COMPLETE**: Export transactions to Excel/CSV
 22. ✅ **P3 COMPLETE**: Export RFID cards to Excel/CSV
 23. ✅ **P3 COMPLETE**: Bulk RFID card import from Excel/CSV
+24. ✅ **P1 COMPLETE**: Full OCPP 1.6 WebSocket implementation on port 9000
+25. ✅ **P3 COMPLETE**: Email templates customization with SendGrid integration
+
+## Backend Architecture
+- `/app/backend/server.py` - Main FastAPI application (~200 lines)
+- `/app/backend/routes/` - 11 modular route files:
+  - `auth.py` - Authentication (login, register, JWT)
+  - `users.py` - User CRUD + import
+  - `chargers.py` - Charger management
+  - `transactions.py` - Transaction CRUD + import + bulk delete
+  - `pricing.py` - Pricing rules and groups
+  - `rfid.py` - RFID card management + import
+  - `dashboard.py` - Statistics
+  - `ocpp.py` - OCPP REST API + WebSocket frontend updates
+  - `settings.py` - PayU, SendGrid configuration
+  - `export.py` - Excel/CSV exports
+  - `email.py` - Email templates management
+- `/app/backend/services/` - Business logic:
+  - `ocpp_server.py` - OCPP 1.6 WebSocket central system
+  - `email_service.py` - SendGrid email service with templates
+
+## OCPP 1.6 Implementation
+- WebSocket server on port 9000
+- URL: `ws://localhost:9000/ocpp/1.6/{charger_id}`
+- Supported messages: BootNotification, Heartbeat, StatusNotification, Authorize, StartTransaction, StopTransaction, MeterValues
+- Remote commands: RemoteStartTransaction, RemoteStopTransaction, Reset, UnlockConnector, ChangeAvailability
+- Simulation endpoints for testing without real hardware
+
+## Email Templates
+- 4 default templates: low_balance, transaction_complete, welcome, password_reset
+- Variable substitution using {{variable_name}} syntax
+- Template preview and customization via API
+- Requires SendGrid API key in settings to send emails
 
 ## Upcoming/Future Tasks
 1. **P1**: Full OCPP 1.6 WebSocket implementation (replacing HTTP simulation)
