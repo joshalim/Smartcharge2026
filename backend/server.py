@@ -277,12 +277,10 @@ class Charger(BaseModel):
     created_at: str
 
 class ChargerCreate(BaseModel):
+    charger_id: str
     name: str
-    location: str
-    model: str
-    serial_number: str
-    connector_types: List[str]
-    max_power: float
+    location: Optional[str] = None
+    connectors: Optional[List[str]] = []
     status: str = "Available"
 
 class ChargerUpdate(BaseModel):
