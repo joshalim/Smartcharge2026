@@ -132,12 +132,53 @@ function OCPP() {
 
   return (
     <div className="space-y-6" style={{ fontFamily: 'IBM Plex Sans, sans-serif' }}>
-      <div>
-        <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2" style={{ fontFamily: 'Chivo, sans-serif' }}>
-          OCPP Monitoring
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400">Real-time charge point monitoring & remote control (OCPP 1.6)</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2" style={{ fontFamily: 'Chivo, sans-serif' }}>
+            OCPP Monitoring
+          </h1>
+          <p className="text-slate-500 dark:text-slate-400">Real-time charge point monitoring & remote control (OCPP 1.6)</p>
+        </div>
+        
+        {/* WebSocket Connection Status */}
+        <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
+          wsConnected 
+            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800' 
+            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800'
+        }`}>
+          {wsConnected ? (
+            <>
+              <Wifi className="w-4 h-4" />
+              <span>Live Updates Active</span>
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+              </span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-4 h-4" />
+              <span>Connecting...</span>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Live Event Notification */}
+      {lastEvent && lastEvent.event !== 'status' && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 flex items-center gap-3">
+          <Radio className="w-5 h-5 text-orange-500 animate-pulse" />
+          <div>
+            <span className="font-medium text-orange-700 dark:text-orange-400">Live Event: </span>
+            <span className="text-orange-600 dark:text-orange-300">
+              {lastEvent.event === 'charger_connected' && `Charger ${lastEvent.data?.charger_id} connected`}
+              {lastEvent.event === 'charger_disconnected' && `Charger ${lastEvent.data?.charger_id} disconnected`}
+              {lastEvent.event === 'transaction_started' && `Transaction started on ${lastEvent.data?.charger_id}`}
+              {lastEvent.event === 'transaction_stopped' && `Transaction completed on ${lastEvent.data?.charger_id}`}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Status Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
