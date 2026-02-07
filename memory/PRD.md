@@ -201,6 +201,20 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Template preview and customization via API
 - Requires SendGrid API key in settings to send emails
 
+## Real-time Frontend Features
+- **useOCPPWebSocket hook** - Custom React hook for WebSocket connection with auto-reconnect
+- **OCPPLiveStatus component** - Dashboard widget showing:
+  - WebSocket connection status (Connected/Disconnected)
+  - Online chargers count
+  - Active sessions count
+  - Charging now count
+  - Live event feed
+- **OCPP page enhancements**:
+  - "Live Updates Active" badge with pulsing indicator
+  - WebSocket label on Online Chargers card
+  - Live event notifications for charger connect/disconnect and transaction start/stop
+  - Reduced polling interval (30s fallback instead of 5s)
+
 ## Upcoming/Future Tasks
 - All planned tasks completed! 🎉
 
