@@ -18,7 +18,7 @@ from database import async_session, Charger, Transaction, Settings, BoldPayment,
 router = APIRouter(prefix="/public", tags=["Public Charging"])
 
 # Get frontend URL from environment for redirects
-FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://evadmin-dashboard.preview.emergentagent.com')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://chargev-admin.preview.emergentagent.com')
 
 # BOLD.CO API Base URL
 BOLD_API_URL = "https://integrations.api.bold.co"
