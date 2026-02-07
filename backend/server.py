@@ -21,11 +21,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# OCPP WebSocket server task
+ocpp_server_task = None
+
 
 # Startup/Shutdown
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler"""
+    global ocpp_server_task
+    
     logger.info("Starting SmartCharge server...")
     
     # Initialize database
@@ -69,11 +74,22 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Admin user check failed: {e}")
     
+    # Start OCPP WebSocket server
+    logger.info("Starting OCPP 1.6 WebSocket server...")
+    try:
+        from services.ocpp_server import start_ocpp_server
+        ocpp_server = await start_ocpp_server(host="0.0.0.0", port=9000)
+        logger.info("✓ OCPP WebSocket server running on ws://0.0.0.0:9000")
+    except Exception as e:
+        logger.error(f"Failed to start OCPP server: {e}")
+    
     logger.info("✓ Server startup complete")
     yield
     
     # Shutdown
     logger.info("Server shutting down...")
+    if ocpp_server_task:
+        ocpp_server_task.cancel()
 
 
 # Create FastAPI app
