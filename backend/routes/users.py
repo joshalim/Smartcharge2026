@@ -247,6 +247,38 @@ async def update_user_role(
         return {"message": "Role updated successfully"}
 
 
+class TopUpRequest(BaseModel):
+    amount: float
+
+
+@router.post("/{user_id}/topup")
+async def topup_rfid_balance(
+    user_id: str,
+    request: TopUpRequest,
+    current_user: UserResponse = Depends(require_role("admin", "user"))
+):
+    """Top up RFID balance for a user"""
+    if request.amount <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be positive")
+    
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        user.rfid_balance = (user.rfid_balance or 0) + request.amount
+        await session.commit()
+        
+        return {
+            "message": "Balance topped up successfully",
+            "new_balance": user.rfid_balance
+        }
+
+
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
