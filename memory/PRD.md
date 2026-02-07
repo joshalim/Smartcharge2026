@@ -201,5 +201,12 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 - Requires SendGrid API key in settings to send emails
 
 ## Upcoming/Future Tasks
-1. **P1**: Full OCPP 1.6 WebSocket implementation (replacing HTTP simulation)
-2. **P3**: Email templates customization
+- All planned tasks completed! 🎉
+
+## Potential Enhancements
+1. **Email template persistence** - Save custom templates to database
+2. **OCPP 2.0 support** - Upgrade to newer protocol
+3. **Real-time dashboard** - WebSocket updates for live stats
+4. **Multi-language email templates** - Spanish/English versions
+5. **Invoice PDF generation** - Detailed transaction receipts
+6. **Mobile app integration** - REST API for mobile clients
