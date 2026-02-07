@@ -142,7 +142,7 @@ function Users() {
   };
 
   const downloadTemplate = () => {
-    const template = 'Name,Email,Password,Role,RFID Card Number,RFID Balance\nJohn Doe,john@example.com,password123,user,RFID001,10000\n';
+    const template = 'Name,Email,Password,Role,Phone,RFID Card Number,RFID Balance\nJohn Doe,john@example.com,password123,user,+573001234567,RFID001,10000\n';
     const blob = new Blob([template], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
