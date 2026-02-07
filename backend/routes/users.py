@@ -138,7 +138,8 @@ async def create_user(
             role=user_data.role,
             rfid_card_number=user_data.rfid_card_number,
             rfid_balance=user_data.rfid_balance or 0.0,
-            rfid_status="active"
+            rfid_status="active",
+            placa=user_data.placa
         )
         session.add(new_user)
         await session.commit()
@@ -153,6 +154,7 @@ async def create_user(
             rfid_card_number=new_user.rfid_card_number,
             rfid_balance=new_user.rfid_balance or 0.0,
             rfid_status=new_user.rfid_status or "active",
+            placa=new_user.placa,
             created_at=new_user.created_at.isoformat() if new_user.created_at else None
         )
 
