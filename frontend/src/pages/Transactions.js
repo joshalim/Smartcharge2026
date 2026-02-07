@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Filter, Download, Trash2, Edit, X, Check, CheckSquare, Square, FileText } from 'lucide-react';
+import { Filter, Download, Trash2, Edit, X, Check, CheckSquare, Square, FileText, Plus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { formatCOP, formatNumber } from '../utils/currency';
 
@@ -27,6 +27,17 @@ function Transactions() {
   const [selectedTxs, setSelectedTxs] = useState([]);
   const [showBulkActions, setShowBulkActions] = useState(false);
   const [bulkPaymentType, setBulkPaymentType] = useState('NEQUI');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    tx_id: '',
+    station: '',
+    connector: '',
+    account: '',
+    start_time: '',
+    end_time: '',
+    meter_value: '',
+  });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchTransactions();
