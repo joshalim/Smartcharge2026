@@ -181,7 +181,7 @@ function OCPP() {
       )}
 
       {/* Status Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
           <div className="flex items-start justify-between mb-4">
             <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
@@ -196,7 +196,7 @@ function OCPP() {
             </span>
           </div>
           <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
-            {status?.active_transactions || 0}
+            {wsActiveTransactions?.length || status?.active_transactions || 0}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Active Transactions</p>
         </div>
@@ -206,11 +206,28 @@ function OCPP() {
             <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30">
               <Server className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
+            {wsConnected && (
+              <span className="text-xs px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full">
+                WebSocket
+              </span>
+            )}
+          </div>
+          <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+            {wsOnlineChargers || status?.online_chargers || 0}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Online Chargers</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+          <div className="flex items-start justify-between mb-4">
+            <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30">
+              <Zap className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
           </div>
           <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
             {status?.total_boots || 0}
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Registered Charge Points</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Boot Notifications</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
@@ -220,9 +237,9 @@ function OCPP() {
             </div>
           </div>
           <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-1">
-            {status?.ocpp_version || 'N/A'}
+            {status?.total_chargers || chargers.length || 0}
           </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">OCPP Version</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Chargers</p>
         </div>
       </div>
 
