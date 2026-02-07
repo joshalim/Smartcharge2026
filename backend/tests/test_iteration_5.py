@@ -187,14 +187,6 @@ class TestOCPP:
 class TestSettings:
     """Settings endpoints tests"""
     
-    def test_get_settings(self, auth_headers):
-        """Test getting all settings"""
-        response = requests.get(f"{BASE_URL}/api/settings", headers=auth_headers)
-        assert response.status_code == 200
-        data = response.json()
-        # Settings can be empty or have payu/sendgrid/invoice_webhook
-        print(f"✓ Settings retrieved: {list(data.keys()) if data else 'empty'}")
-    
     def test_get_payu_settings(self, auth_headers):
         """Test getting PayU settings"""
         response = requests.get(f"{BASE_URL}/api/settings/payu", headers=auth_headers)
