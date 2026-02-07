@@ -28,12 +28,9 @@ function Settings() {
   });
   const [showPassword, setShowPassword] = useState({});
   
-  // PayU Settings
-  const [payuSettings, setPayuSettings] = useState({
+  // BOLD.CO Settings
+  const [boldSettings, setBoldSettings] = useState({
     api_key: '',
-    api_login: '',
-    merchant_id: '',
-    account_id: '',
     test_mode: true
   });
   
