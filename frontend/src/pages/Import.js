@@ -51,10 +51,15 @@ function Import() {
       const formData = new FormData();
       formData.append('file', file);
 
+      // Debug: Check if token exists
+      console.log('Token available:', !!token);
+      console.log('File name:', file.name);
+      console.log('File size:', file.size);
+      console.log('File type:', file.type);
+
       const response = await axios.post(`${API}/transactions/import`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'Authorization': `Bearer ${token}`,
         },
       });
 
@@ -64,7 +69,22 @@ function Import() {
         fileInputRef.current.value = '';
       }
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Failed to upload file';
+      console.error('Import error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      
+      let errorMessage = 'Failed to upload file';
+      
+      if (error.response?.status === 401) {
+        errorMessage = 'Authentication failed. Please log in again.';
+      } else if (error.response?.status === 422) {
+        errorMessage = error.response?.data?.detail || 'Invalid file format or missing required columns';
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       setResult({
         success: false,
         imported_count: 0,
