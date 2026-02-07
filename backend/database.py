@@ -40,6 +40,10 @@ class User(Base):
     password_hash = Column(String, nullable=False)
     role = Column(String, default="user")  # admin, user, viewer
     pricing_group_id = Column(String, ForeignKey("pricing_groups.id", ondelete="SET NULL"), nullable=True)
+    # RFID fields - each user has one RFID card
+    rfid_card_number = Column(String, unique=True, nullable=True, index=True)
+    rfid_balance = Column(Float, default=0.0)
+    rfid_status = Column(String, default="active")  # active, inactive, blocked
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
