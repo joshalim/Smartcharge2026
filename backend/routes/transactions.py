@@ -283,10 +283,17 @@ async def create_transaction(
     tx_data: TransactionCreate,
     current_user: UserResponse = Depends(require_role("admin", "user"))
 ):
-    """Create a new transaction"""
+    """Create a new transaction and deduct from RFID balance if applicable"""
     price_per_kwh = await get_pricing(tx_data.account, tx_data.connector, tx_data.connector_type)
     cost = tx_data.meter_value * price_per_kwh
     charging_duration = calculate_charging_duration(tx_data.start_time, tx_data.end_time)
+    
+    # Determine payment status based on RFID balance deduction
+    payment_status = "UNPAID"
+    deduction_result = await deduct_rfid_balance(tx_data.account, round(cost, 2))
+    
+    if deduction_result.get("deducted"):
+        payment_status = "PAID"
     
     async with async_session() as session:
         new_tx = Transaction(
@@ -301,7 +308,7 @@ async def create_transaction(
             meter_value=tx_data.meter_value,
             charging_duration=charging_duration,
             cost=round(cost, 2),
-            payment_status="UNPAID"
+            payment_status=payment_status
         )
         session.add(new_tx)
         await session.commit()
