@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Zap, Battery, MapPin, Users, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCOP, formatNumber } from '../utils/currency';
+import OCPPLiveStatus from '../components/OCPPLiveStatus';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
