@@ -332,7 +332,10 @@ async def import_transactions(
     file: UploadFile = File(...),
     current_user: UserResponse = Depends(require_role("admin", "user"))
 ):
-    """Import transactions from Excel file"""
+    """Import transactions from Excel file. 
+    Required columns: TxID, Station, Connector, Account, Start Time, End Time, Meter value(kW.h)
+    All other columns are ignored.
+    """
     if not file.filename.endswith(('.xlsx', '.xls')):
         raise HTTPException(status_code=400, detail="Only Excel files (.xlsx, .xls) are allowed")
     
@@ -343,62 +346,84 @@ async def import_transactions(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read Excel file: {str(e)}")
     
-    # Create case-insensitive column mapping
-    df_columns_lower = {col.lower(): col for col in df.columns}
-    required_columns_map = {
+    # Define required columns with flexible matching (case-insensitive, space-insensitive)
+    required_columns = {
         'txid': 'TxID',
         'station': 'Station', 
         'connector': 'Connector',
         'account': 'Account',
         'start time': 'Start Time',
+        'starttime': 'Start Time',
         'end time': 'End Time',
-        'meter value(kw.h)': 'Meter value(kW.h)'
+        'endtime': 'End Time',
+        'meter value(kw.h)': 'Meter value(kW.h)',
+        'metervalue(kw.h)': 'Meter value(kW.h)',
+        'meter value (kw.h)': 'Meter value(kW.h)',
+        'meter value': 'Meter value(kW.h)',
+        'metervalue': 'Meter value(kW.h)',
+        'kwh': 'Meter value(kW.h)',
+        'kw.h': 'Meter value(kW.h)',
+        'energy': 'Meter value(kW.h)',
+        'energy (kwh)': 'Meter value(kW.h)',
+        'energy(kwh)': 'Meter value(kW.h)',
     }
     
-    # Normalize column names
+    # Normalize dataframe columns - create mapping from original to standard names
+    df_columns_lower = {col.lower().strip(): col for col in df.columns}
     column_mapping = {}
-    missing_columns = []
-    for required_lower, required_display in required_columns_map.items():
-        found = False
-        for df_col_lower, df_col_orig in df_columns_lower.items():
-            if df_col_lower == required_lower:
-                column_mapping[df_col_orig] = required_display
-                found = True
-                break
-        if not found:
-            missing_columns.append(required_display)
+    found_columns = set()
     
+    for df_col_lower, df_col_orig in df_columns_lower.items():
+        if df_col_lower in required_columns:
+            standard_name = required_columns[df_col_lower]
+            column_mapping[df_col_orig] = standard_name
+            found_columns.add(standard_name)
+    
+    # Apply column renaming
     if column_mapping:
         df = df.rename(columns=column_mapping)
+    
+    # Check for missing required columns
+    required_standard = {'TxID', 'Station', 'Connector', 'Account', 'Start Time', 'End Time', 'Meter value(kW.h)'}
+    missing_columns = required_standard - found_columns
     
     if missing_columns:
         raise HTTPException(
             status_code=400,
-            detail=f"Missing required columns: {', '.join(missing_columns)}"
+            detail=f"Missing required columns: {', '.join(sorted(missing_columns))}. Found columns: {', '.join(df.columns.tolist())}"
         )
     
-    import pandas as pd
     errors = []
     imported = 0
     skipped = 0
     
     for idx, row in df.iterrows():
-        row_num = idx + 2
+        row_num = idx + 2  # Excel row (1-indexed + header)
         
+        # Parse meter value
         try:
-            meter_value = float(row['Meter value(kW.h)'])
-        except (ValueError, TypeError):
+            meter_value_raw = row['Meter value(kW.h)']
+            if pd.isna(meter_value_raw):
+                meter_value = 0.0
+            else:
+                # Handle string values with commas (European format)
+                if isinstance(meter_value_raw, str):
+                    meter_value_raw = meter_value_raw.replace(',', '.').strip()
+                meter_value = float(meter_value_raw)
+        except (ValueError, TypeError) as e:
             errors.append(ImportValidationError(
                 row=row_num,
                 field="Meter value(kW.h)",
-                message="Invalid number format"
+                message=f"Invalid number format: {row['Meter value(kW.h)']}"
             ))
             continue
         
+        # Skip rows with 0 meter value
         if meter_value == 0:
             skipped += 1
             continue
         
+        # Validate TxID
         if pd.isna(row['TxID']) or str(row['TxID']).strip() == '':
             errors.append(ImportValidationError(
                 row=row_num,
@@ -407,10 +432,10 @@ async def import_transactions(
             ))
             continue
         
-        tx_id = str(row['TxID'])
+        tx_id = str(row['TxID']).strip()
         
         async with async_session() as session:
-            # Check if transaction exists
+            # Check if transaction already exists
             result = await session.execute(
                 select(Transaction).where(Transaction.tx_id == tx_id)
             )
@@ -418,21 +443,30 @@ async def import_transactions(
                 skipped += 1
                 continue
             
-            account = str(row['Account']) if not pd.isna(row['Account']) else ""
-            connector = str(row['Connector']) if not pd.isna(row['Connector']) else ""
-            connector_type = str(row.get('Connector Type', '')) if 'Connector Type' in df.columns and not pd.isna(row.get('Connector Type')) else None
+            # Extract values with safe defaults
+            account = str(row['Account']).strip() if not pd.isna(row['Account']) else ""
+            connector = str(row['Connector']).strip() if not pd.isna(row['Connector']) else ""
+            station = str(row['Station']).strip() if not pd.isna(row['Station']) else ""
             
+            # Connector type is optional - check if present
+            connector_type = None
+            if 'Connector Type' in df.columns and not pd.isna(row.get('Connector Type')):
+                connector_type = str(row['Connector Type']).strip()
+            
+            # Calculate pricing
             price_per_kwh = await get_pricing(account, connector, connector_type)
             cost = meter_value * price_per_kwh
             
+            # Parse times
             start_time = str(row['Start Time']) if not pd.isna(row['Start Time']) else ""
             end_time = str(row['End Time']) if not pd.isna(row['End Time']) else ""
             charging_duration = calculate_charging_duration(start_time, end_time)
             
+            # Create transaction
             new_tx = Transaction(
                 id=str(uuid.uuid4()),
                 tx_id=tx_id,
-                station=str(row['Station']),
+                station=station,
                 connector=connector,
                 connector_type=connector_type,
                 account=account,
