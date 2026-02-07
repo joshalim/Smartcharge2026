@@ -168,9 +168,5 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 23. ✅ **P3 COMPLETE**: Bulk RFID card import from Excel/CSV
 
 ## Upcoming/Future Tasks
-1. **P1**: Full OCPP 1.6 WebSocket implementation
-2. **P2**: Backend refactoring (split server.py into modules)
-3. **P2**: Replace db_adapter.py with direct SQLAlchemy calls
-4. **P3**: Email templates customization
-5. **P3**: Bulk RFID card import
-6. **P3**: Export users to Excel
+1. **P1**: Full OCPP 1.6 WebSocket implementation (replacing HTTP simulation)
+2. **P3**: Email templates customization
