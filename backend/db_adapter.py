@@ -129,7 +129,7 @@ class PostgresCollection:
     async def insert_one(self, data: dict):
         """Insert single record"""
         async with async_session() as session:
-            prepared = prepare_data(data)
+            prepared = prepare_data(data, self.model)
             obj = self.model(**prepared)
             session.add(obj)
             await session.commit()
