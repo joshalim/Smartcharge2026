@@ -147,6 +147,107 @@ class AppConfig(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 
+class Settings(Base):
+    """Settings table for PayU, SendGrid, etc."""
+    __tablename__ = "settings"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    type = Column(String, unique=True, nullable=False)  # payu, sendgrid
+    api_key = Column(String)
+    api_login = Column(String)
+    merchant_id = Column(String)
+    account_id = Column(String)
+    test_mode = Column(Boolean, default=True)
+    sender_email = Column(String)
+    sender_name = Column(String)
+    enabled = Column(Boolean, default=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class PayUPayment(Base):
+    """PayU payment records"""
+    __tablename__ = "payu_payments"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    reference_code = Column(String, unique=True, nullable=False, index=True)
+    rfid_card_id = Column(String)
+    card_number = Column(String)
+    user_id = Column(String)
+    amount = Column(Float)
+    buyer_name = Column(String)
+    buyer_email = Column(String)
+    buyer_phone = Column(String)
+    status = Column(String, default="PENDING")
+    payu_response = Column(JSON, default=dict)
+    payu_transaction_id = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class PayUWebhookLog(Base):
+    """PayU webhook logs"""
+    __tablename__ = "payu_webhook_logs"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    reference_code = Column(String, index=True)
+    webhook_data = Column(JSON, default=dict)
+    received_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class OCPPBoot(Base):
+    """OCPP boot notification records"""
+    __tablename__ = "ocpp_boots"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    vendor = Column(String)
+    model = Column(String)
+    serial = Column(String)
+    firmware = Column(String)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now())
+    status = Column(String, default="Accepted")
+
+
+class OCPPTransaction(Base):
+    """OCPP transaction records"""
+    __tablename__ = "ocpp_transactions"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    transaction_id = Column(Integer, index=True)
+    charger_id = Column(String, index=True)
+    connector_id = Column(Integer)
+    id_tag = Column(String)
+    meter_start = Column(Integer)
+    meter_stop = Column(Integer)
+    start_timestamp = Column(String)
+    stop_timestamp = Column(String)
+    status = Column(String, default="active")  # active, completed
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class InvoiceWebhookConfig(Base):
+    """Invoice webhook configuration"""
+    __tablename__ = "invoice_webhook_config"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    webhook_url = Column(String)
+    api_key = Column(String)
+    enabled = Column(Boolean, default=True)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class InvoiceWebhookLog(Base):
+    """Invoice webhook delivery logs"""
+    __tablename__ = "invoice_webhook_logs"
+    
+    id = Column(String, primary_key=True, default=generate_uuid)
+    transaction_id = Column(String, index=True)
+    status = Column(String)  # success, failed
+    response_code = Column(Integer)
+    response_body = Column(Text)
+    error = Column(Text)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
 # ============== Database Functions ==============
 
 async def init_db():
