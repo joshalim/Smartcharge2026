@@ -383,6 +383,17 @@ function Users() {
                       data-testid="user-balance-input"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">PLACA (Vehicle Registration)</label>
+                    <input
+                      type="text"
+                      value={userForm.placa}
+                      onChange={(e) => setUserForm({ ...userForm, placa: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                      placeholder="e.g., ABC-123 (optional)"
+                      data-testid="user-placa-input"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
