@@ -256,6 +256,7 @@ function Settings() {
     { id: 'account', name: 'Account', icon: User },
     { id: 'qrcodes', name: 'QR Codes', icon: QrCode },
     { id: 'bold', name: 'BOLD.CO', icon: CreditCard },
+    { id: 'whatsapp', name: 'WhatsApp', icon: Zap },
     { id: 'sendgrid', name: 'Email (SendGrid)', icon: Mail },
     { id: 'webhook', name: 'FullColombia', icon: Webhook },
   ];
