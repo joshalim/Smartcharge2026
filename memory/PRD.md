@@ -191,7 +191,7 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
-- `/app/backend/routes/` - 11 modular route files:
+- `/app/backend/routes/` - 12 modular route files:
   - `auth.py` - Authentication (login, register, JWT)
   - `users.py` - User CRUD + import
   - `chargers.py` - Charger management
@@ -203,6 +203,7 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
   - `settings.py` - PayU, SendGrid configuration
   - `export.py` - Excel/CSV exports
   - `email.py` - Email templates management
+  - `public_charge.py` - QR code charging flow + PayU integration
 - `/app/backend/services/` - Business logic:
   - `ocpp_server.py` - OCPP 1.6 WebSocket central system
   - `email_service.py` - SendGrid email service with templates
