@@ -15,14 +15,6 @@ from routes.auth import get_current_user, require_role, UserResponse
 
 router = APIRouter(prefix="/transactions", tags=["Transactions"])
 
-# Default pricing
-CONNECTOR_TYPE_PRICING = {
-    "CCS2": 2500.0,
-    "CHADEMO": 2000.0,
-    "J1772": 1500.0
-}
-SPECIAL_ACCOUNTS = ["PORTERIA", "Jorge Iluminacion", "John Iluminacion"]
-
 
 # Pydantic Models
 class TransactionResponse(BaseModel):
