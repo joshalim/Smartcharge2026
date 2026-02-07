@@ -418,14 +418,14 @@ function Transactions() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Connector</label>
+                  <label className="block text-sm font-medium mb-1">Connector Type</label>
                   <input
                     type="text"
-                    value={createForm.connector}
-                    onChange={(e) => setCreateForm({ ...createForm, connector: e.target.value })}
+                    value={createForm.connector_type}
+                    onChange={(e) => setCreateForm({ ...createForm, connector_type: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
-                    placeholder="e.g., 1"
-                    data-testid="create-connector"
+                    placeholder="e.g., Type2 or CCS"
+                    data-testid="create-connector-type"
                   />
                 </div>
               </div>
