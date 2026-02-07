@@ -373,8 +373,11 @@ class ChargePointHandler(cp):
 central_system = OCPPCentralSystem()
 
 
-async def on_connect(websocket: WebSocketServerProtocol, path: str):
+async def on_connect(websocket):
     """Handle new WebSocket connection"""
+    # Get path from the websocket
+    path = websocket.request.path if hasattr(websocket, 'request') else websocket.path
+    
     # Extract charger ID from path (e.g., /ocpp/1.6/CHARGER001)
     path_parts = path.strip('/').split('/')
     
@@ -387,11 +390,6 @@ async def on_connect(websocket: WebSocketServerProtocol, path: str):
     logger.info(f"New connection attempt from {charger_id}")
     
     try:
-        # Validate OCPP subprotocol
-        requested_protocols = websocket.request_headers.get('Sec-WebSocket-Protocol', '')
-        if 'ocpp1.6' not in requested_protocols and 'ocpp1.6j' not in requested_protocols:
-            logger.warning(f"Invalid subprotocol from {charger_id}: {requested_protocols}")
-        
         # Create charge point handler
         charge_point = ChargePointHandler(charger_id, websocket, central_system)
         
@@ -405,6 +403,8 @@ async def on_connect(websocket: WebSocketServerProtocol, path: str):
         logger.info(f"Connection closed for {charger_id}: {e}")
     except Exception as e:
         logger.error(f"Error handling connection for {charger_id}: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         await central_system.unregister_charger(charger_id)
 
