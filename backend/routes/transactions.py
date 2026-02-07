@@ -247,18 +247,6 @@ async def get_pricing(account: str, connector: str, connector_type: Optional[str
         
         # Ultimate fallback
         return 500.0
-                PricingRule.connector == "default"
-            )
-        )
-        default_pricing = result.scalar_one_or_none()
-        if default_pricing:
-            return default_pricing.price_per_kwh
-        
-        # Fall back to connector type pricing
-        if connector_type and connector_type in CONNECTOR_TYPE_PRICING:
-            return CONNECTOR_TYPE_PRICING[connector_type]
-        
-        return 500.0
 
 
 def transaction_to_response(tx: Transaction) -> TransactionResponse:
