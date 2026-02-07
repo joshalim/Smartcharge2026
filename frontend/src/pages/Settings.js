@@ -182,7 +182,7 @@ function Settings() {
     { id: 'account', name: 'Account', icon: User },
     { id: 'payu', name: 'PayU Colombia', icon: CreditCard },
     { id: 'sendgrid', name: 'Email (SendGrid)', icon: Mail },
-    { id: 'webhook', name: 'Invoice Webhook', icon: Webhook },
+    { id: 'webhook', name: 'FullColombia', icon: Webhook },
   ];
 
   if (loading) {
