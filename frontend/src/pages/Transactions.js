@@ -689,13 +689,10 @@ function Transactions() {
                       )}
                       <td className="py-3 px-3 font-medium text-slate-900 dark:text-slate-100">{tx.tx_id}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.account}</td>
-                      <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{tx.connector}</td>
                       <td className="py-3 px-3">
-                        {tx.connector_type && (
-                          <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-950/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-medium">
-                            {tx.connector_type}
-                          </span>
-                        )}
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {tx.connector}{tx.connector_type ? ` - ${tx.connector_type}` : ''}
+                        </span>
                       </td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.date}</td>
                       <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{startDT.time}</td>
