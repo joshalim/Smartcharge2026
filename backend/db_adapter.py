@@ -48,11 +48,17 @@ def to_datetime(value):
     return value
 
 
-def prepare_data(data: dict) -> dict:
-    """Prepare data for database insertion/update"""
+def prepare_data(data: dict, model) -> dict:
+    """Prepare data for database insertion/update - only include valid model fields"""
     result = {}
+    # Get valid column names for this model
+    valid_columns = {col.name for col in model.__table__.columns}
+    
     for key, value in data.items():
         if key == '_id':
+            continue
+        # Only include fields that exist in the model
+        if key not in valid_columns:
             continue
         if key in DATETIME_FIELDS:
             result[key] = to_datetime(value)
