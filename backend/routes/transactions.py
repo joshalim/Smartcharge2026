@@ -169,31 +169,56 @@ async def deduct_rfid_balance(account: str, cost: float) -> dict:
 
 
 async def get_pricing(account: str, connector: str, connector_type: Optional[str] = None, user_id: Optional[str] = None) -> float:
-    """Get price per kWh based on account, connector, and user's pricing group"""
+    """
+    Get price per kWh based on account, connector type, and user's pricing group.
+    
+    Default pricing (PORTERIA):
+    - CCS = 2500 COP/kWh
+    - CHADEMO = 2000 COP/kWh
+    - J1772 = 1500 COP/kWh
+    - Default = 500 COP/kWh
+    """
+    # Default pricing by connector type
+    DEFAULT_CONNECTOR_PRICING = {
+        'CCS': 2500.0,
+        'CCS2': 2500.0,
+        'CHADEMO': 2000.0,
+        'J1772': 1500.0,
+        'TYPE2': 1500.0,
+        'Type2': 1500.0,
+    }
+    
+    # Normalize connector type for matching
+    connector_normalized = (connector or '').upper().strip()
+    connector_type_normalized = (connector_type or '').upper().strip()
+    
+    # Check which one to use for pricing
+    pricing_key = connector_type_normalized or connector_normalized
     
     async with async_session() as session:
-        # Check if user has a pricing group assigned
-        if user_id:
-            result = await session.execute(
-                select(User).where(User.id == user_id)
+        # First, try to find user by account and check their pricing group
+        user_result = await session.execute(
+            select(User).where(
+                (User.name == account) |
+                (User.email == account) |
+                (User.rfid_card_number == account)
             )
-            user = result.scalar_one_or_none()
-            if user and user.pricing_group_id:
-                group_result = await session.execute(
-                    select(PricingGroup).where(PricingGroup.id == user.pricing_group_id)
-                )
-                group = group_result.scalar_one_or_none()
-                if group and group.connector_pricing and connector_type:
-                    if connector_type in group.connector_pricing:
-                        return group.connector_pricing[connector_type]
+        )
+        user = user_result.scalar_one_or_none()
         
-        # Check if account is in special group
-        if account in SPECIAL_ACCOUNTS:
-            if connector_type and connector_type in CONNECTOR_TYPE_PRICING:
-                return CONNECTOR_TYPE_PRICING[connector_type]
-            return 500.0
+        if user and user.pricing_group_id:
+            # Get user's pricing group
+            group_result = await session.execute(
+                select(PricingGroup).where(PricingGroup.id == user.pricing_group_id)
+            )
+            group = group_result.scalar_one_or_none()
+            if group and group.connector_pricing:
+                # Check for exact match in pricing group
+                for key, price in group.connector_pricing.items():
+                    if key.upper() == pricing_key:
+                        return float(price)
         
-        # Check for custom pricing
+        # Check for custom pricing rules
         result = await session.execute(
             select(PricingRule).where(
                 PricingRule.account == account,
@@ -204,10 +229,24 @@ async def get_pricing(account: str, connector: str, connector_type: Optional[str
         if pricing:
             return pricing.price_per_kwh
         
-        # Check for default pricing
+        # Check for account-level default pricing
         result = await session.execute(
             select(PricingRule).where(
                 PricingRule.account == account,
+                PricingRule.connector == "*"
+            )
+        )
+        pricing = result.scalar_one_or_none()
+        if pricing:
+            return pricing.price_per_kwh
+        
+        # Use default connector type pricing
+        for key, price in DEFAULT_CONNECTOR_PRICING.items():
+            if key.upper() == pricing_key:
+                return price
+        
+        # Ultimate fallback
+        return 500.0
                 PricingRule.connector == "default"
             )
         )
