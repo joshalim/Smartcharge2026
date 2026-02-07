@@ -183,6 +183,9 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 27. ✅ **SECURITY**: Demo credentials removed from login page (Feb 7, 2026)
 28. ✅ **FEATURE**: Password change functionality added to Settings > Account tab (Feb 7, 2026)
 29. ✅ **P0 BUG FIX**: Excel import made more flexible - only requires: TxID, Station, Connector, Account, Start Time, End Time, Meter value(kW.h). All other columns ignored. (Feb 7, 2026)
+30. ✅ **FEATURE**: Transaction CRUD - Manual add, edit, delete individual transactions (Feb 7, 2026)
+31. ✅ **REFACTOR**: RFID combined into Users - Each user now has integrated RFID card fields (Feb 7, 2026)
+32. ✅ **FEATURE**: Excel import rebuilt - Client-side parsing with SheetJS, sends JSON to backend (Feb 7, 2026)
 
 ## Backend Architecture
 - `/app/backend/server.py` - Main FastAPI application (~200 lines)
