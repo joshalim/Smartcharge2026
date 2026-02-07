@@ -212,6 +212,46 @@ function Settings() {
     }
   };
 
+  // Download QR code as PNG
+  const downloadQRCode = (chargerId, connector) => {
+    const url = getQRCodeUrl(chargerId, connector);
+    const canvas = document.createElement('canvas');
+    const svg = document.getElementById(`qr-${chargerId}-${connector}`);
+    
+    if (!svg) return;
+    
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const svgUrl = URL.createObjectURL(svgBlob);
+    
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = 300;
+      canvas.height = 300;
+      const ctx = canvas.getContext('2d');
+      
+      // White background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw QR code
+      ctx.drawImage(img, 0, 0, 300, 300);
+      
+      // Download
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `QR-${chargerId}-${connector}.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+      
+      URL.revokeObjectURL(svgUrl);
+      showMessage('success', `QR code downloaded: QR-${chargerId}-${connector}.png`);
+    };
+    img.src = svgUrl;
+  };
+
   // Connector types
   const CONNECTORS = ['CCS2', 'CHADEMO', 'J1772'];
 
