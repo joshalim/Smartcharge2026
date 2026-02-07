@@ -59,6 +59,9 @@ async def get_users(current_user: UserResponse = Depends(require_role("admin")))
                 name=u.name,
                 role=u.role,
                 pricing_group_id=u.pricing_group_id,
+                rfid_card_number=u.rfid_card_number,
+                rfid_balance=u.rfid_balance or 0.0,
+                rfid_status=u.rfid_status or "active",
                 created_at=u.created_at.isoformat() if u.created_at else None
             )
             for u in users
@@ -86,6 +89,9 @@ async def get_user(
             name=user.name,
             role=user.role,
             pricing_group_id=user.pricing_group_id,
+            rfid_card_number=user.rfid_card_number,
+            rfid_balance=user.rfid_balance or 0.0,
+            rfid_status=user.rfid_status or "active",
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
