@@ -180,8 +180,7 @@ function Transactions() {
     setEditingTx(tx.id);
     setEditForm({
       station: tx.station,
-      connector: tx.connector,
-      connector_type: tx.connector_type || '',
+      connector: tx.connector || '',
       account: tx.account,
       start_time: tx.start_time,
       end_time: tx.end_time,
