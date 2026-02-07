@@ -570,7 +570,7 @@ function Settings() {
         </div>
       )}
 
-      {/* Invoice Webhook Settings */}
+      {/* FullColombia Integration Settings */}
       {activeTab === 'webhook' && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
           <div className="flex items-center gap-3 mb-6">
@@ -578,14 +578,14 @@ function Settings() {
               <Webhook className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>Invoice Webhook</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Send transaction data to 3rd party invoicing systems</p>
+              <h2 className="text-xl font-bold" style={{ fontFamily: 'Chivo, sans-serif' }}>FullColombia Integration</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">Send transaction data to FullColombia invoicing system</p>
             </div>
           </div>
           
           <div className="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg mb-6">
             <div>
-              <p className="font-medium">Enable Webhook</p>
+              <p className="font-medium">Enable FullColombia</p>
               <p className="text-sm text-slate-500 dark:text-slate-400">Send data when transactions complete</p>
             </div>
             <button
@@ -603,19 +603,19 @@ function Settings() {
           
           <div className="space-y-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Webhook URL</label>
+              <label className="block text-sm font-medium mb-2">FullColombia API URL</label>
               <input
                 type="url"
                 value={webhookSettings.webhook_url}
                 onChange={(e) => setWebhookSettings({...webhookSettings, webhook_url: e.target.value})}
                 className="w-full h-10 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm"
-                placeholder="https://your-invoice-system.com/webhook"
+                placeholder="https://api.fullcolombia.com/invoice"
                 data-testid="webhook-url"
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2">API Key (Optional)</label>
+              <label className="block text-sm font-medium mb-2">API Key</label>
               <div className="relative">
                 <input
                   type={showApiKey.webhook ? 'text' : 'password'}
