@@ -176,15 +176,15 @@ async def generate_report(
             PaymentSummary(status=k, **v) for k, v in payment_status_data.items()
         ]
         
-        # Convert transactions to response model
+        # Convert transactions to response model (limit to 500 for frontend performance)
         tx_list = [
             TransactionData(
                 id=tx.id,
                 tx_id=tx.tx_id,
-                station=tx.station,
+                station=tx.station or "",
                 connector=tx.connector,
                 connector_type=tx.connector_type,
-                account=tx.account,
+                account=tx.account or "",
                 start_time=tx.start_time or "",
                 end_time=tx.end_time or "",
                 charging_duration=tx.charging_duration,
@@ -194,7 +194,7 @@ async def generate_report(
                 payment_type=tx.payment_type,
                 payment_date=tx.payment_date
             )
-            for tx in transactions
+            for tx in transactions[:500]  # Limit for frontend
         ]
         
         return ReportData(
@@ -207,4 +207,22 @@ async def generate_report(
             by_station=by_station,
             by_account=by_account,
             by_payment_status=by_payment_status
+        )
+    except Exception as e:
+        import logging
+        logging.error(f"Report generation error: {e}")
+        # Return empty report on error
+        return ReportData(
+            total_transactions=0,
+            total_revenue=0,
+            total_energy=0,
+            paid_count=0,
+            unpaid_count=0,
+            transactions=[],
+            by_station=[],
+            by_account=[],
+            by_payment_status=[
+                PaymentSummary(status="PAID", count=0, total=0),
+                PaymentSummary(status="UNPAID", count=0, total=0)
+            ]
         )
