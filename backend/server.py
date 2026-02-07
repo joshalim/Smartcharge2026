@@ -267,14 +267,13 @@ def verify_password(password: str, hashed: str) -> bool:
 class Charger(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str
+    charger_id: str
     name: str
-    location: str
-    model: str
-    serial_number: str
-    connector_types: List[str]
-    max_power: float
-    status: str
-    created_at: str
+    location: Optional[str] = None
+    status: str = "Available"
+    connectors: Optional[List[str]] = []
+    last_heartbeat: Optional[str] = None
+    created_at: Optional[str] = None
 
 class ChargerCreate(BaseModel):
     charger_id: str
