@@ -102,7 +102,8 @@ function Users() {
       password: '',
       role: user.role,
       rfid_card_number: user.rfid_card_number || '',
-      rfid_balance: user.rfid_balance || 0
+      rfid_balance: user.rfid_balance || 0,
+      placa: user.placa || ''
     });
     setShowUserModal(true);
   };
