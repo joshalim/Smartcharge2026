@@ -202,6 +202,17 @@ const resources = {
       'dashboard.uniqueAccounts': 'Cuentas Únicas',
       'dashboard.recentTransactions': 'Transacciones Recientes',
       'dashboard.noTransactions': 'No hay transacciones aún. Importa datos para comenzar.',
+      'dashboard.financialOverview': 'Resumen Financiero',
+      'dashboard.totalIncome': 'Ingresos Totales',
+      'dashboard.totalExpenses': 'Gastos Totales',
+      'dashboard.netProfit': 'Ganancia Neta',
+      'dashboard.profitMargin': 'Margen de Ganancia',
+      'dashboard.monthlyIncomeExpenses': 'Ingresos vs Gastos Mensuales',
+      'dashboard.profitTrend': 'Tendencia de Ganancias y Margen',
+      'dashboard.incomeExpenseDistribution': 'Distribución Ingresos/Gastos',
+      'dashboard.income': 'Ingresos',
+      'dashboard.expenses': 'Gastos',
+      'dashboard.profit': 'Ganancia',
       
       // Transactions
       'transactions.title': 'Transacciones',
