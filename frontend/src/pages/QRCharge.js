@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
-import { Zap, Battery, CreditCard, Car, Mail, Phone, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Zap, Battery, CreditCard, Car, Mail, Phone, CheckCircle, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
 import { formatCOP } from '../utils/currency';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -113,19 +113,20 @@ function QRCharge() {
       const data = await response.json();
       setSession(data);
       
-      // Here you would redirect to PayU or show payment options
-      // For now, we show the session created message
+      // If PayU payment URL is provided, redirect to PayU
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      }
       
     } catch (err) {
       alert(err.message);
-    } finally {
       setProcessing(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center" data-testid="qr-charge-loading">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
       </div>
     );
@@ -133,7 +134,7 @@ function QRCharge() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4" data-testid="qr-charge-error">
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Charger Not Found</h1>
@@ -143,9 +144,10 @@ function QRCharge() {
     );
   }
 
-  if (session) {
+  if (session && !session.payment_url) {
+    // Show session created but no PayU configured
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4" data-testid="qr-charge-session">
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-8 shadow-xl max-w-md w-full text-center">
           <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">Session Created!</h1>
@@ -172,13 +174,17 @@ function QRCharge() {
             </div>
           </div>
           
-          <p className="text-sm text-slate-500 mb-4">
-            Please proceed to payment to start charging.
-          </p>
+          <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 mb-4">
+            <p className="text-sm text-orange-700 dark:text-orange-400">
+              <AlertCircle className="w-4 h-4 inline mr-1" />
+              PayU payment is not configured. Please contact the station administrator.
+            </p>
+          </div>
           
           <button
             onClick={() => window.location.reload()}
             className="w-full py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-xl font-medium transition-colors"
+            data-testid="start-new-session-btn"
           >
             Start New Session
           </button>
@@ -188,7 +194,7 @@ function QRCharge() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-white dark:from-slate-900 dark:to-slate-800 p-4" data-testid="qr-charge-page">
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="text-center mb-6 pt-4">
@@ -200,13 +206,13 @@ function QRCharge() {
         </div>
 
         {/* Charger Info */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4" data-testid="charger-info-card">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center">
               <Battery className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
-              <h2 className="font-bold text-lg text-slate-900 dark:text-white">{charger?.name}</h2>
+              <h2 className="font-bold text-lg text-slate-900 dark:text-white" data-testid="charger-name">{charger?.name}</h2>
               <p className="text-sm text-slate-500">{charger?.location || chargerId}</p>
             </div>
             <div className="ml-auto">
@@ -214,7 +220,7 @@ function QRCharge() {
                 charger?.status === 'available' || charger?.status === 'Available'
                   ? 'bg-emerald-100 text-emerald-800'
                   : 'bg-red-100 text-red-800'
-              }`}>
+              }`} data-testid="charger-status">
                 {charger?.status}
               </span>
             </div>
@@ -225,7 +231,7 @@ function QRCharge() {
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
               Connector Type
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2" data-testid="connector-selection">
               {['CCS', 'CHADEMO', 'J1772'].map((type) => (
                 <button
                   key={type}
@@ -235,6 +241,7 @@ function QRCharge() {
                       ? 'border-orange-500 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400'
                       : 'border-slate-200 dark:border-slate-700 hover:border-slate-300'
                   }`}
+                  data-testid={`connector-${type.toLowerCase()}`}
                 >
                   {type}
                 </button>
@@ -249,13 +256,13 @@ function QRCharge() {
         </div>
 
         {/* Amount Selection */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4" data-testid="amount-selection-card">
           <div className="flex items-center gap-2 mb-4">
             <CreditCard className="w-5 h-5 text-orange-600" />
             <h3 className="font-bold text-slate-900 dark:text-white">Select Amount</h3>
           </div>
           
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-3 gap-2 mb-4" data-testid="preset-amounts">
             {PRESET_AMOUNTS.map((preset) => (
               <button
                 key={preset}
@@ -265,6 +272,7 @@ function QRCharge() {
                     ? 'bg-orange-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
                 }`}
+                data-testid={`amount-${preset}`}
               >
                 {formatCOP(preset)}
               </button>
@@ -279,6 +287,7 @@ function QRCharge() {
               onChange={(e) => setCustomAmount(e.target.value)}
               placeholder="Enter amount in COP"
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
+              data-testid="custom-amount-input"
             />
           </div>
           
@@ -286,14 +295,14 @@ function QRCharge() {
             <div className="mt-4 p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
               <div className="flex justify-between items-center">
                 <span className="text-slate-600 dark:text-slate-400">Estimated Energy</span>
-                <span className="text-2xl font-bold text-orange-600">{calculateEstimatedKwh()} kWh</span>
+                <span className="text-2xl font-bold text-orange-600" data-testid="estimated-kwh">{calculateEstimatedKwh()} kWh</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Contact Info (Optional) */}
-        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-lg mb-4" data-testid="contact-info-card">
           <h3 className="font-bold text-slate-900 dark:text-white mb-4">Contact Info (Optional)</h3>
           
           <div className="space-y-3">
@@ -305,6 +314,7 @@ function QRCharge() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email for receipt"
                 className="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
+                data-testid="email-input"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -315,6 +325,7 @@ function QRCharge() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone number"
                 className="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
+                data-testid="phone-input"
               />
             </div>
             <div className="flex items-center gap-3">
@@ -325,8 +336,18 @@ function QRCharge() {
                 onChange={(e) => setPlaca(e.target.value)}
                 placeholder="Vehicle plate (PLACA)"
                 className="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 dark:bg-slate-800"
+                data-testid="placa-input"
               />
             </div>
+          </div>
+        </div>
+
+        {/* PayU Info Banner */}
+        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4 mb-4 flex items-start gap-3">
+          <ExternalLink className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm text-blue-700 dark:text-blue-400 font-medium">Secure Payment via PayU</p>
+            <p className="text-xs text-blue-600 dark:text-blue-500">You will be redirected to PayU to complete payment securely.</p>
           </div>
         </div>
 
@@ -335,6 +356,7 @@ function QRCharge() {
           onClick={handleStartCharge}
           disabled={processing || !selectedConnector}
           className="w-full py-4 bg-orange-600 hover:bg-orange-700 disabled:bg-slate-400 text-white rounded-2xl font-bold text-lg transition-colors flex items-center justify-center gap-2 shadow-lg"
+          data-testid="start-charge-btn"
         >
           {processing ? (
             <>
