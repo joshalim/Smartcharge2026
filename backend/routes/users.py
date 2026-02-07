@@ -212,6 +212,10 @@ async def update_user(
                 raise HTTPException(status_code=400, detail="Invalid RFID status")
             user.rfid_status = user_data.rfid_status
         
+        # Update PLACA (vehicle registration)
+        if user_data.placa is not None:
+            user.placa = user_data.placa or None
+        
         await session.commit()
         await session.refresh(user)
         
@@ -224,6 +228,7 @@ async def update_user(
             rfid_card_number=user.rfid_card_number,
             rfid_balance=user.rfid_balance or 0.0,
             rfid_status=user.rfid_status or "active",
+            placa=user.placa,
             created_at=user.created_at.isoformat() if user.created_at else None
         )
 
