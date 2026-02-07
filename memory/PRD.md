@@ -38,12 +38,22 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
    - CSV export functionality
    - Summary statistics and data tables
 
-6. **Settings Management**
+6. **Expenses Tracking** (Added Feb 2025)
+   - Full CRUD for expense management
+   - Fields: name, date, cost, reason
+   - Search and date filtering
+   - Dashboard integration with financial charts:
+     - Monthly Income vs Expenses (Bar Chart)
+     - Profit Trend & Margin (Line/Area Chart)
+     - Income/Expense Distribution (Pie Chart)
+   - Financial summary cards (Total Income, Expenses, Profit, Margin)
+
+7. **Settings Management**
    - API key management for BOLD.CO, SendGrid, Twilio
    - QR code generator per connector
    - Webhook configuration (FullColombia)
 
-7. **WhatsApp Notifications**
+8. **WhatsApp Notifications**
    - Twilio integration for messaging
    - Per-user notification toggle
 
