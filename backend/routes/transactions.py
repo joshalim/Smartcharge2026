@@ -237,8 +237,8 @@ async def get_pricing(account: str, connector: str, connector_type: Optional[str
             if key.upper() == pricing_key:
                 return price
         
-        # Ultimate fallback
-        return 500.0
+        # No pricing found - return 0
+        return 0.0
 
 
 def transaction_to_response(tx: Transaction) -> TransactionResponse:
