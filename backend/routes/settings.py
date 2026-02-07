@@ -246,3 +246,74 @@ async def update_invoice_webhook_settings(
         
         await session.commit()
         return {"message": "Invoice webhook settings updated successfully"}
+
+
+
+@router.get("/twilio", response_model=TwilioSettings)
+async def get_twilio_settings(current_user: UserResponse = Depends(require_role("admin"))):
+    """Get Twilio WhatsApp configuration"""
+    async with async_session() as session:
+        result = await session.execute(
+            select(Settings).where(Settings.type == "twilio")
+        )
+        settings = result.scalar_one_or_none()
+        
+        if not settings:
+            return TwilioSettings()
+        
+        return TwilioSettings(
+            account_sid=settings.api_login,  # Using api_login for account_sid
+            auth_token=settings.api_key,  # Using api_key for auth_token
+            whatsapp_number=settings.sender_email,  # Using sender_email for whatsapp_number
+            enabled=settings.enabled if settings.enabled is not None else False
+        )
+
+
+@router.put("/twilio")
+async def update_twilio_settings(
+    settings_data: TwilioSettings,
+    current_user: UserResponse = Depends(require_role("admin"))
+):
+    """Update Twilio WhatsApp configuration"""
+    async with async_session() as session:
+        result = await session.execute(
+            select(Settings).where(Settings.type == "twilio")
+        )
+        settings = result.scalar_one_or_none()
+        
+        if settings:
+            settings.api_login = settings_data.account_sid
+            settings.api_key = settings_data.auth_token
+            settings.sender_email = settings_data.whatsapp_number
+            settings.enabled = settings_data.enabled
+        else:
+            settings = Settings(
+                id=str(uuid.uuid4()),
+                type="twilio",
+                api_login=settings_data.account_sid,
+                api_key=settings_data.auth_token,
+                sender_email=settings_data.whatsapp_number,
+                enabled=settings_data.enabled
+            )
+            session.add(settings)
+        
+        await session.commit()
+        return {"message": "Twilio WhatsApp settings updated successfully"}
+
+
+@router.post("/twilio/test")
+async def test_twilio_whatsapp(
+    phone_number: str,
+    current_user: UserResponse = Depends(require_role("admin"))
+):
+    """Test WhatsApp messaging by sending a test message"""
+    from services.whatsapp import send_whatsapp_message
+    
+    result = await send_whatsapp_message(
+        to_phone=phone_number,
+        template='welcome',
+        language='es',
+        name=current_user.name
+    )
+    
+    return result
