@@ -116,10 +116,15 @@ function Reports() {
     setLoading(true);
     try {
       const response = await axios.post(`${API}/reports/generate`, filters);
-      setReportData(response.data);
+      if (response.data) {
+        setReportData(response.data);
+      } else {
+        alert('No data returned from server');
+      }
     } catch (error) {
       console.error('Failed to generate report:', error);
-      alert('Failed to generate report');
+      alert('Failed to generate report: ' + (error.response?.data?.detail || error.message));
+      setReportData(null);
     } finally {
       setLoading(false);
     }
