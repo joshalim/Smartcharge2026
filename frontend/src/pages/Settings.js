@@ -112,6 +112,38 @@ function Settings() {
     }
   };
 
+  const saveTwilioSettings = async () => {
+    setSaving(true);
+    try {
+      await axios.put(`${API}/settings/twilio`, twilioSettings);
+      showMessage('success', 'Twilio WhatsApp settings saved successfully');
+    } catch (error) {
+      showMessage('error', error.response?.data?.detail || 'Failed to save Twilio settings');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const testTwilioWhatsApp = async () => {
+    if (!testWhatsAppPhone) {
+      showMessage('error', 'Please enter a phone number to test');
+      return;
+    }
+    setTestingWhatsApp(true);
+    try {
+      const response = await axios.post(`${API}/settings/twilio/test?phone_number=${encodeURIComponent(testWhatsAppPhone)}`);
+      if (response.data.success) {
+        showMessage('success', 'WhatsApp test message sent successfully!');
+      } else {
+        showMessage('error', response.data.error || 'Failed to send test message');
+      }
+    } catch (error) {
+      showMessage('error', error.response?.data?.detail || 'Failed to send test message');
+    } finally {
+      setTestingWhatsApp(false);
+    }
+  };
+
   const saveSendgridSettings = async () => {
     setSaving(true);
     try {
