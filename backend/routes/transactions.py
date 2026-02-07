@@ -87,6 +87,23 @@ class ImportResult(BaseModel):
     errors: List[ImportValidationError]
 
 
+class TransactionImportItem(BaseModel):
+    TxID: str
+    Station: str
+    Connector: str
+    Account: str
+    Start_Time: Optional[str] = None
+    End_Time: Optional[str] = None
+    Meter_value_kWh: Optional[float] = None
+    
+    class Config:
+        extra = 'allow'  # Allow extra fields to be ignored
+
+
+class TransactionImportRequest(BaseModel):
+    transactions: List[dict]  # Accept raw dict to handle various column names
+
+
 def calculate_charging_duration(start_time: str, end_time: str) -> str:
     """Calculate duration between start and end times"""
     try:
