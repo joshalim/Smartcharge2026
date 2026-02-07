@@ -106,14 +106,19 @@ function Transactions() {
     setCreating(true);
     try {
       await axios.post(`${API}/transactions`, {
-        ...createForm,
+        tx_id: createForm.tx_id,
+        station: createForm.station,
+        connector: createForm.connector_type,
+        account: createForm.account,
+        start_time: createForm.start_time,
+        end_time: createForm.end_time,
         meter_value: parseFloat(createForm.meter_value) || 0,
       });
       setShowCreateModal(false);
       setCreateForm({
         tx_id: '',
         station: '',
-        connector: '',
+        connector_type: '',
         account: '',
         start_time: '',
         end_time: '',
