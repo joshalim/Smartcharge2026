@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { Zap, Plus, Edit, Trash2, X, MapPin, Power, Activity } from 'lucide-react';
+import { Zap, Plus, Edit, Trash2, X, MapPin, Activity } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
