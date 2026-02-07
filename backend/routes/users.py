@@ -23,12 +23,17 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: str = "user"
+    rfid_card_number: Optional[str] = None
+    rfid_balance: Optional[float] = 0.0
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     password: Optional[str] = None
+    rfid_card_number: Optional[str] = None
+    rfid_balance: Optional[float] = None
+    rfid_status: Optional[str] = None
 
 
 class UserImportResult(BaseModel):
