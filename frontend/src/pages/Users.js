@@ -368,6 +368,47 @@ function Users() {
                   <option value="viewer">Viewer</option>
                 </select>
               </div>
+              
+              {/* Phone & WhatsApp Section */}
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
+                <h4 className="font-medium mb-3 flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-green-500" />
+                  Contact & Notifications
+                </h4>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Phone Number (WhatsApp)</label>
+                    <input
+                      type="tel"
+                      value={userForm.phone}
+                      onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-800"
+                      placeholder="+573001234567"
+                      data-testid="user-phone-input"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">Include country code (e.g., +57 for Colombia)</p>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <MessageCircle className="w-4 h-4 text-green-500" />
+                      <span className="text-sm font-medium">WhatsApp Notifications</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setUserForm({ ...userForm, whatsapp_enabled: !userForm.whatsapp_enabled })}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        userForm.whatsapp_enabled ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'
+                      }`}
+                      data-testid="user-whatsapp-toggle"
+                    >
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                        userForm.whatsapp_enabled ? 'translate-x-7' : 'translate-x-1'
+                      }`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
               <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
                 <h4 className="font-medium mb-3 flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-orange-500" />
