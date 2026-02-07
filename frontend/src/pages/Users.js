@@ -103,9 +103,11 @@ function Users() {
       email: user.email,
       password: '',
       role: user.role,
+      phone: user.phone || '',
       rfid_card_number: user.rfid_card_number || '',
       rfid_balance: user.rfid_balance || 0,
-      placa: user.placa || ''
+      placa: user.placa || '',
+      whatsapp_enabled: user.whatsapp_enabled !== false
     });
     setShowUserModal(true);
   };
