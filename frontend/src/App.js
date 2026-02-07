@@ -13,6 +13,8 @@ import Chargers from './pages/Chargers';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 import Layout from './components/Layout';
+import QRCharge from './pages/QRCharge';
+import PaymentResult from './pages/PaymentResult';
 import './App.css';
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -119,6 +121,9 @@ function AppRoutes() {
           }
         />
       </Route>
+      {/* Public QR Charge routes - no auth required */}
+      <Route path="/charge/:chargerId" element={<QRCharge />} />
+      <Route path="/payment/result" element={<PaymentResult />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
