@@ -614,80 +614,101 @@ async def import_transactions_json(
     Required fields: TxID, Station, Connector, Account, Start Time, End Time, Meter value(kW.h)
     Duplicates (same TxID) are skipped.
     """
+    import logging
+    
     errors = []
     imported = 0
     skipped = 0
+    transactions_to_add = []
     
-    for idx, row in enumerate(request.transactions):
-        row_num = idx + 2  # Excel row number
-        
-        # Get TxID
-        tx_id = str(row.get('TxID', '')).strip()
-        if not tx_id:
-            errors.append(ImportValidationError(row=row_num, field="TxID", message="TxID is required"))
-            continue
-        
-        # Get meter value
-        meter_raw = row.get('Meter value(kW.h)', 0)
+    # Use a single session for all operations
+    async with async_session() as session:
         try:
-            if isinstance(meter_raw, str):
-                meter_value = float(meter_raw.replace(',', '.').strip()) if meter_raw.strip() else 0.0
-            else:
-                meter_value = float(meter_raw) if meter_raw else 0.0
-        except (ValueError, TypeError):
-            errors.append(ImportValidationError(row=row_num, field="Meter value", message=f"Invalid number: {meter_raw}"))
-            continue
-        
-        # Skip zero meter value
-        if meter_value == 0:
-            skipped += 1
-            continue
-        
-        # Check for duplicate
-        async with async_session() as session:
-            result = await session.execute(
-                select(Transaction).where(Transaction.tx_id == tx_id)
-            )
-            if result.scalar_one_or_none():
-                skipped += 1
-                continue
+            # Get existing transaction IDs to check for duplicates
+            result = await session.execute(select(Transaction.tx_id))
+            existing_tx_ids = {tx_id for tx_id in result.scalars().all() if tx_id}
             
-            # Extract fields
-            station = str(row.get('Station', '')).strip()
-            connector = str(row.get('Connector', '')).strip()
-            account = str(row.get('Account', '')).strip()
-            start_time = str(row.get('Start Time', '')).strip()
-            end_time = str(row.get('End Time', '')).strip()
+            for idx, row in enumerate(request.transactions):
+                row_num = idx + 2  # Excel row number
+                
+                try:
+                    # Get TxID
+                    tx_id = str(row.get('TxID', '')).strip()
+                    if not tx_id:
+                        errors.append(ImportValidationError(row=row_num, field="TxID", message="TxID is required"))
+                        continue
+                    
+                    # Get meter value
+                    meter_raw = row.get('Meter value(kW.h)', 0)
+                    try:
+                        if isinstance(meter_raw, str):
+                            meter_value = float(meter_raw.replace(',', '.').strip()) if meter_raw.strip() else 0.0
+                        else:
+                            meter_value = float(meter_raw) if meter_raw else 0.0
+                    except (ValueError, TypeError):
+                        errors.append(ImportValidationError(row=row_num, field="Meter value", message=f"Invalid number: {meter_raw}"))
+                        continue
+                    
+                    # Skip zero meter value
+                    if meter_value == 0:
+                        skipped += 1
+                        continue
+                    
+                    # Check for duplicate
+                    if tx_id in existing_tx_ids:
+                        skipped += 1
+                        continue
+                    
+                    # Extract fields
+                    station = str(row.get('Station', '')).strip()
+                    connector = str(row.get('Connector', '')).strip()
+                    account = str(row.get('Account', '')).strip()
+                    start_time = str(row.get('Start Time', '')).strip()
+                    end_time = str(row.get('End Time', '')).strip()
+                    
+                    # Calculate pricing and duration
+                    price_per_kwh = await get_pricing(account, connector, None)
+                    cost = round(meter_value * price_per_kwh, 2)
+                    duration = calculate_charging_duration(start_time, end_time)
+                    
+                    # Try to deduct from RFID balance
+                    payment_status = "UNPAID"
+                    deduction_result = await deduct_rfid_balance(account, cost)
+                    if deduction_result.get("deducted"):
+                        payment_status = "PAID"
+                    
+                    # Create transaction
+                    new_tx = Transaction(
+                        id=str(uuid.uuid4()),
+                        tx_id=tx_id,
+                        station=station,
+                        connector=connector,
+                        account=account,
+                        start_time=start_time,
+                        end_time=end_time,
+                        meter_value=meter_value,
+                        charging_duration=duration,
+                        cost=cost,
+                        payment_status=payment_status
+                    )
+                    
+                    transactions_to_add.append(new_tx)
+                    existing_tx_ids.add(tx_id)
+                    imported += 1
+                    
+                except Exception as e:
+                    logging.error(f"Error processing row {row_num}: {e}")
+                    errors.append(ImportValidationError(row=row_num, field="Processing", message=str(e)))
             
-            # Calculate pricing and duration
-            price_per_kwh = await get_pricing(account, connector, None)
-            cost = round(meter_value * price_per_kwh, 2)
-            duration = calculate_charging_duration(start_time, end_time)
-            
-            # Try to deduct from RFID balance
-            payment_status = "UNPAID"
-            deduction_result = await deduct_rfid_balance(account, cost)
-            if deduction_result.get("deducted"):
-                payment_status = "PAID"
-            
-            # Create transaction
-            new_tx = Transaction(
-                id=str(uuid.uuid4()),
-                tx_id=tx_id,
-                station=station,
-                connector=connector,
-                account=account,
-                start_time=start_time,
-                end_time=end_time,
-                meter_value=meter_value,
-                charging_duration=duration,
-                cost=cost,
-                payment_status=payment_status
-            )
-            
-            session.add(new_tx)
-            await session.commit()
-            imported += 1
+            # Bulk add all transactions in a single commit
+            if transactions_to_add:
+                session.add_all(transactions_to_add)
+                await session.commit()
+                
+        except Exception as e:
+            logging.error(f"Database error during transaction import: {e}")
+            await session.rollback()
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     return ImportResult(
         success=len(errors) == 0,
