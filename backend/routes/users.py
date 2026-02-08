@@ -339,24 +339,27 @@ async def import_users(
     current_user: UserResponse = Depends(require_role("admin"))
 ):
     """Import users from Excel/CSV file (Admin only)"""
+    import pandas as pd
+    import logging
+    
     if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
         raise HTTPException(status_code=400, detail="File must be Excel (.xlsx, .xls) or CSV (.csv)")
     
     try:
-        import pandas as pd
         contents = await file.read()
         if file.filename.endswith('.csv'):
             df = pd.read_csv(BytesIO(contents))
         else:
             df = pd.read_excel(BytesIO(contents))
     except Exception as e:
+        logging.error(f"Failed to read import file: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to read file: {str(e)}")
     
     # Create case-insensitive column mapping
     df_columns_lower = {col.lower().strip(): col for col in df.columns}
     
     # Map columns
-    name_col = email_col = role_col = password_col = group_col = None
+    name_col = email_col = role_col = password_col = group_col = phone_col = rfid_col = None
     
     for col_lower, col_orig in df_columns_lower.items():
         if col_lower in ['name', 'nombre', 'full name', 'fullname']:
@@ -369,85 +372,123 @@ async def import_users(
             password_col = col_orig
         elif col_lower in ['group', 'grupo', 'pricing group', 'pricing_group']:
             group_col = col_orig
+        elif col_lower in ['phone', 'telefono', 'teléfono', 'celular', 'mobile']:
+            phone_col = col_orig
+        elif col_lower in ['rfid', 'rfid card', 'rfid_card_number', 'rfid card number', 'tarjeta']:
+            rfid_col = col_orig
     
     if not name_col:
         raise HTTPException(status_code=400, detail="Missing required column: Name")
     if not email_col:
         raise HTTPException(status_code=400, detail="Missing required column: Email")
     
-    # Get all pricing groups for mapping
-    async with async_session() as session:
-        result = await session.execute(select(PricingGroup))
-        groups = {g.name.lower(): g.id for g in result.scalars().all()}
-    
     imported = 0
     skipped = 0
     errors = []
     default_password = "ChangeMeNow123!"
     
-    import pandas as pd
-    
-    for idx, row in df.iterrows():
-        row_num = idx + 2
-        
-        name = str(row[name_col]).strip() if not pd.isna(row[name_col]) else ""
-        email = str(row[email_col]).strip().lower() if not pd.isna(row[email_col]) else ""
-        
-        if not name:
-            errors.append({"row": row_num, "field": "Name", "message": "Name is required"})
-            continue
-        
-        if not email or '@' not in email:
-            errors.append({"row": row_num, "field": "Email", "message": "Valid email is required"})
-            continue
-        
-        async with async_session() as session:
-            # Check for existing user
-            result = await session.execute(
-                select(User).where(User.email == email)
-            )
-            if result.scalar_one_or_none():
-                skipped += 1
-                continue
+    # Use a single session for all operations
+    async with async_session() as session:
+        try:
+            # Get all pricing groups for mapping
+            result = await session.execute(select(PricingGroup))
+            groups = {g.name.lower(): g.id for g in result.scalars().all()}
             
-            # Get role
-            role = "user"
-            if role_col and not pd.isna(row.get(role_col)):
-                role_value = str(row[role_col]).strip().lower()
-                if role_value in ['admin', 'administrador']:
-                    role = "admin"
-                elif role_value in ['viewer', 'visor', 'view']:
-                    role = "viewer"
+            # Get existing emails to check for duplicates
+            result = await session.execute(select(User.email))
+            existing_emails = {email.lower() for email in result.scalars().all()}
             
-            # Get password
-            password = default_password
-            if password_col and not pd.isna(row.get(password_col)):
-                pwd = str(row[password_col]).strip()
-                if len(pwd) >= 6:
-                    password = pwd
+            # Get existing RFID cards
+            result = await session.execute(select(User.rfid_card_number).where(User.rfid_card_number.isnot(None)))
+            existing_rfids = {rfid for rfid in result.scalars().all() if rfid}
             
-            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            users_to_add = []
             
-            # Get pricing group
-            pricing_group_id = None
-            if group_col and not pd.isna(row.get(group_col)):
-                group_name = str(row[group_col]).strip().lower()
-                pricing_group_id = groups.get(group_name)
+            for idx, row in df.iterrows():
+                row_num = idx + 2
+                
+                try:
+                    name = str(row[name_col]).strip() if pd.notna(row[name_col]) else ""
+                    email = str(row[email_col]).strip().lower() if pd.notna(row[email_col]) else ""
+                    
+                    if not name:
+                        errors.append({"row": row_num, "field": "Name", "message": "Name is required"})
+                        continue
+                    
+                    if not email or '@' not in email:
+                        errors.append({"row": row_num, "field": "Email", "message": "Valid email is required"})
+                        continue
+                    
+                    # Check for existing user
+                    if email in existing_emails:
+                        skipped += 1
+                        continue
+                    
+                    # Get role
+                    role = "user"
+                    if role_col and pd.notna(row.get(role_col)):
+                        role_value = str(row[role_col]).strip().lower()
+                        if role_value in ['admin', 'administrador']:
+                            role = "admin"
+                        elif role_value in ['viewer', 'visor', 'view']:
+                            role = "viewer"
+                    
+                    # Get password
+                    password = default_password
+                    if password_col and pd.notna(row.get(password_col)):
+                        pwd = str(row[password_col]).strip()
+                        if len(pwd) >= 6:
+                            password = pwd
+                    
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    
+                    # Get pricing group
+                    pricing_group_id = None
+                    if group_col and pd.notna(row.get(group_col)):
+                        group_name = str(row[group_col]).strip().lower()
+                        pricing_group_id = groups.get(group_name)
+                    
+                    # Get phone
+                    phone = None
+                    if phone_col and pd.notna(row.get(phone_col)):
+                        phone = str(row[phone_col]).strip()
+                    
+                    # Get RFID card number
+                    rfid_card_number = None
+                    if rfid_col and pd.notna(row.get(rfid_col)):
+                        rfid_value = str(row[rfid_col]).strip()
+                        if rfid_value and rfid_value not in existing_rfids:
+                            rfid_card_number = rfid_value
+                            existing_rfids.add(rfid_value)
+                    
+                    new_user = User(
+                        id=str(uuid.uuid4()),
+                        name=name,
+                        email=email,
+                        password_hash=password_hash,
+                        role=role,
+                        phone=phone,
+                        rfid_card_number=rfid_card_number,
+                        pricing_group_id=pricing_group_id,
+                        whatsapp_enabled=True
+                    )
+                    
+                    users_to_add.append(new_user)
+                    existing_emails.add(email)
+                    imported += 1
+                    
+                except Exception as e:
+                    logging.error(f"Error processing row {row_num}: {e}")
+                    errors.append({"row": row_num, "field": "Processing", "message": str(e)})
             
-            new_user = User(
-                id=str(uuid.uuid4()),
-                name=name,
-                email=email,
-                password_hash=password_hash,
-                role=role,
-                pricing_group_id=pricing_group_id
-            )
-            
-            try:
-                session.add(new_user)
+            # Bulk add all users in a single transaction
+            if users_to_add:
+                session.add_all(users_to_add)
                 await session.commit()
-                imported += 1
-            except Exception as e:
-                errors.append({"row": row_num, "field": "Database", "message": str(e)})
+                
+        except Exception as e:
+            logging.error(f"Database error during user import: {e}")
+            await session.rollback()
+            raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
     
     return UserImportResult(imported=imported, skipped=skipped, errors=errors)
