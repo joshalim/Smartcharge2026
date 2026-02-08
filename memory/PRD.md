@@ -96,6 +96,9 @@ Build a full-stack web application for managing EV (Electric Vehicle) charging t
 ## Known Issues
 1. **Schema Drift**: Login breaks when models change without corresponding ALTER TABLE
 2. **Preview Limitation**: Backend cannot run in preview (no PostgreSQL)
+
+## Bug Fixes (Feb 2025)
+- **User Import Crash**: Fixed database session management in import functions. Previously creating new sessions per row, causing connection pool exhaustion and app crash.
 3. **User blocked**: psql password authentication failed for "evuser"
 
 ## File Structure
