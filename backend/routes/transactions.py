@@ -105,7 +105,7 @@ def calculate_charging_duration(start_time: str, end_time: str) -> str:
         hours = duration.seconds // 3600
         minutes = (duration.seconds % 3600) // 60
         return f"{hours}h {minutes}m"
-    except:
+    except (ValueError, TypeError, AttributeError):
         return "N/A"
 
 
